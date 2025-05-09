@@ -31,7 +31,7 @@ Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio,
 
   float f = 1.0f / std::tan(fovY / 2.0f);
 
-  result.m[0][0] = f / aspectRatio;
+  result.m[0][0] = 1.0f / f / aspectRatio;
   result.m[1][1] = f;
   result.m[2][2] = farClip / (farClip - nearClip);
   result.m[2][3] = 1.0f;
