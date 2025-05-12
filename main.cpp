@@ -465,6 +465,10 @@ void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
                      int(endScreen.y), color);
   }
 }
+
+
+
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   // ライブラリの初期化
