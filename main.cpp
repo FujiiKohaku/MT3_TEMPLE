@@ -488,24 +488,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   sphere1.center = {4.0f, 0.0f, 10.0f};
   sphere2.radius = 2.0f;
   sphere2.center = {-4.0f, 0.0f, 10.0f};
-  // 万国共通カメラマトリックス
-  Matrix4x4 cameraMatrix =
-      MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
-  // カメラを逆さにviewMatrix
-  Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-  // portを追加
-  Matrix4x4 viewportMatrix = MakeViewportMatrix(
-      0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
-  // 透視投影行列の計算
-  Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
-      float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
-  // GRID計算
-  // Grid用のWorldViewProjection行列（ワールド行列は単位行列）
-  Matrix4x4 gridWorldMatrix = MakeIdentity4x4(); // 単位行列（何も変換しない）
-  Matrix4x4 gridWorldViewProjectionMatrix =
-      Multiply(gridWorldMatrix, Multiply(viewMatrix, projectionMatrix));
-  // GRID計算
-  //
 
   // 球の生存フラグ
   int sphereIsAlive = true;
@@ -522,18 +504,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     /// ↓更新処理ここから
     ///
 
+    // 万国共通カメラマトリックス
+    Matrix4x4 cameraMatrix =
+        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
+    // カメラを逆さにviewMatrix
+    Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+    // portを追加
+    Matrix4x4 viewportMatrix = MakeViewportMatrix(
+        0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+    // 透視投影行列の計算
+    Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
+        float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
+    // GRID計算
+    // Grid用のWorldViewProjection行列（ワールド行列は単位行列）
+    Matrix4x4 gridWorldMatrix = MakeIdentity4x4(); // 単位行列（何も変換しない）
+    Matrix4x4 gridWorldViewProjectionMatrix =
+        Multiply(viewMatrix, projectionMatrix);
+    // GRID計算
+    //
+
     // 球1個目計算
     Matrix4x4 sphere1WorldMatrix =
         MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translateSphere1);
     Matrix4x4 sphere1WorldViewProjectionMatrix =
-        Multiply(sphere1WorldMatrix, Multiply(viewMatrix, projectionMatrix));
+        Multiply(viewMatrix, projectionMatrix);
     // 球2個目計算
     Matrix4x4 sphere2WorldMatrix =
         MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translateSphere2);
     Matrix4x4 sphere2WorldViewProjectionMatrix =
-        Multiply(sphere2WorldMatrix, Multiply(viewMatrix, projectionMatrix));
-    // スペースキー押したら球は動き出す
-    // スペースキー押したら球は動き出す
+        Multiply(viewMatrix, projectionMatrix);
     if (keys[DIK_A]) {
       sphere1.center.x -= 0.1f;
       sphere2.center.x += 0.1f;
@@ -550,6 +549,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     } else {
       sphereIsAlive = true;
     }
+
+    ImGui::Begin("sphere");
+    ImGui::DragFloat3("translate[0]", &sphere1.center.x, 0.1f);
+    ImGui::DragFloat3("translate[1]", &sphere2.center.x, 0.1f);
+    ImGui::End();
+
+    ImGui::Begin("camera");
+    ImGui::DragFloat3("translate", &cameraTransLate.x, 0.1f);
+    ImGui::End();
     ///
     /// ↑更新処理ここまで
     ///
