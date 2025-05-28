@@ -477,7 +477,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   // 初期化,定義
   Sphere sphere1 = {};
   Sphere sphere2 = {};
-  Vector3 rotate{};
+  Vector3 rotate{}; 
   Vector3 translateSphere1{};
   Vector3 translateSphere2{};
   Vector3 cameraTransLate{0.0f, 1.9f, -6.49f};
