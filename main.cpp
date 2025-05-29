@@ -353,7 +353,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     /// ↓更新処理ここから
     ///
     // WSキーで前後に,ADキーで左右に三角形を動かす.Y軸回転させるという処理をここに書く.translateとrotateの値を変更すればいい
-
+    rotate.y+=0.01f;
     // WSキーで前後移動
     if (keys[DIK_W]) {
       translate.z += 0.1f; // 前に進む（カメラ座標系）
