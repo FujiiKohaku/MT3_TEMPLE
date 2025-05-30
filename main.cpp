@@ -79,8 +79,8 @@ Matrix4x4 MakeRotateYMatrix(float radian) {
 Matrix4x4 MakeRotateZMatrix(float radian) {
   Matrix4x4 result = {};
   result.m[0][0] = cosf(radian);
-  result.m[0][1] = -sinf(radian);
-  result.m[1][0] = sinf(radian);
+  result.m[0][1] = sinf(radian);  // 符号が逆
+  result.m[1][0] = -sinf(radian); // 符号が逆
   result.m[1][1] = cosf(radian);
   result.m[2][2] = 1.0f;
   result.m[3][3] = 1.0f;
@@ -117,7 +117,7 @@ Matrix4x4 MakeAffineMatrix(const Vector3 &scale, const Vector3 &rotate,
   Matrix4x4 rotateX = MakeRotateXMatrix(rotate.x);
   Matrix4x4 rotateY = MakeRotateYMatrix(rotate.y);
   Matrix4x4 rotateZ = MakeRotateZMatrix(rotate.z);
-  Matrix4x4 rotateMatrix = Multiply(Multiply(rotateZ, rotateX), rotateY);
+  Matrix4x4 rotateMatrix = Multiply(Multiply(rotateX, rotateY), rotateZ);
   Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
 
   Matrix4x4 worldMatrix =
