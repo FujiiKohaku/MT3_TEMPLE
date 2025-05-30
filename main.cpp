@@ -557,14 +557,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   Plane groundPlane;
   groundPlane.nomal = {0.0f, 1.0f, 0.0f};
   groundPlane.distance = 0.0f;
-  Sphere sphere;
-  sphere.center = {0.0f, 0.0f, 80.0f};
-  sphere.radius = 6;
-  Vector3 rotate{};
-  Vector3 translatePlane{};
-  Vector3 translateSphere{};
-  Vector3 cameraTransLate{0.0f, 1.9f, -6.49f};
-  Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
+  Sphere sphere; // ok
+  sphere.center = {0.0f, 0.0f, 0.0f};
+  sphere.radius = 2;
+  Vector3 rotate{};                            // ok
+  Vector3 translatePlane{};                    // ok
+  Vector3 translateSphere{};                   // ok
+  Vector3 cameraTransLate{0.0f, 1.9f, -6.49f}; // ok
+  Vector3 cameraRotate{0.26f, 0.0f, 0.0f};     // ok
   int kWindowWidth = 1280;
   int kWindowHeight = 720;
 
@@ -636,12 +636,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       translatePlane.z -= 0.01f;
     }
 
-   // デバックのやつ
+    // デバックのやつ
     ImGui::Begin("window");
     ImGui::DragFloat3("CameraTranslate", &cameraTransLate.x, 0.01f);
     ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
     ImGui::DragFloat3("SpherCenter", &sphere.center.x, 0.01f);
-    ImGui::DragFloat3("SpherTranslate",&translateSphere.x, 0.01f);
+    ImGui::DragFloat3("SpherTranslate", &translateSphere.x, 0.01f);
     ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
     ImGui::End();
     // 球2個目計算
@@ -657,8 +657,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // 矩形描画
     DrawPlane(groundPlane, planeWorldViewProjectionMatrix, viewportMatrix,
               WHITE);
+    if (isHit) {
 
-    DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix, WHITE);
+      DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix,
+                 WHITE);
+    }
     ///
     /// ↑描画処理ここまで
     ///
