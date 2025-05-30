@@ -636,13 +636,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       translatePlane.z -= 0.01f;
     }
 
-    ImGui::Begin("sphere");
-    ImGui::DragFloat3("translate", &translateSphere.x, 0.1f);
-    ImGui::Checkbox("isHit", &isHit);
-    ImGui::End();
-
-    ImGui::Begin("camera");
-    ImGui::DragFloat3("translate", &cameraTransLate.x, 0.1f);
+   // デバックのやつ
+    ImGui::Begin("window");
+    ImGui::DragFloat3("CameraTranslate", &cameraTransLate.x, 0.01f);
+    ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
+    ImGui::DragFloat3("SpherCenter", &sphere.center.x, 0.01f);
+    ImGui::DragFloat3("SpherTranslate",&translateSphere.x, 0.01f);
+    ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
     ImGui::End();
     // 球2個目計算
     ///
