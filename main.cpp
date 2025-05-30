@@ -644,6 +644,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ImGui::DragFloat3("SpherTranslate", &translateSphere.x, 0.01f);
     ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
     ImGui::End();
+
+    
     // 球2個目計算
     ///
     /// ↑更新処理ここまで
@@ -657,11 +659,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // 矩形描画
     DrawPlane(groundPlane, planeWorldViewProjectionMatrix, viewportMatrix,
               WHITE);
-    if (isHit) {
 
-      DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix,
-                 WHITE);
-    }
+    DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix, WHITE);
+
     ///
     /// ↑描画処理ここまで
     ///
