@@ -97,45 +97,42 @@ Vector3 Transform(const Vector3 &vector, const Matrix4x4 &matrix) {
 
   return result;
 }
-// X軸回転行列
-Matrix4x4 MakeRotateXMatrix(const float radian) {
+// X軸回転行列（左手座標系）
+Matrix4x4 MakeRotateXMatrix(float radian) {
   Matrix4x4 result = {};
-
   result.m[0][0] = 1.0f;
-  result.m[1][1] = std::cos(radian);
-  result.m[1][2] = std::sin(radian);
-  result.m[2][1] = -std::sin(radian);
-  result.m[2][2] = std::cos(radian);
+  result.m[1][1] = cosf(radian);
+  result.m[1][2] = sinf(radian);  // ← ここ符号変更
+  result.m[2][1] = -sinf(radian); // ← ここ符号変更
+  result.m[2][2] = cosf(radian);
   result.m[3][3] = 1.0f;
-
   return result;
 }
-// Y軸回転行列
-Matrix4x4 MakeRotateYMatrix(const float radian) {
-  Matrix4x4 result = {};
 
-  result.m[0][0] = std::cos(radian);
-  result.m[0][2] = std::sin(radian);
+// Y軸回転行列（左手座標系）
+Matrix4x4 MakeRotateYMatrix(float radian) {
+  Matrix4x4 result = {};
+  result.m[0][0] = cosf(radian);
+  result.m[0][2] = -sinf(radian); // ← ここ符号変更
   result.m[1][1] = 1.0f;
-  result.m[2][0] = -std::sin(radian);
-  result.m[2][2] = std::cos(radian);
+  result.m[2][0] = sinf(radian); // ← ここ符号変更
+  result.m[2][2] = cosf(radian);
   result.m[3][3] = 1.0f;
-
   return result;
 }
-// Z軸回転行列
-Matrix4x4 MakeRotateZMatrix(const float radian) {
-  Matrix4x4 result = {};
 
-  result.m[0][0] = std::cos(radian);
-  result.m[0][1] = -std::sin(radian);
-  result.m[1][0] = std::sin(radian);
-  result.m[1][1] = std::cos(radian);
+// Z軸回転行列（左右手共通）
+Matrix4x4 MakeRotateZMatrix(float radian) {
+  Matrix4x4 result = {};
+  result.m[0][0] = cosf(radian);
+  result.m[0][1] = sinf(radian);  // 符号が逆
+  result.m[1][0] = -sinf(radian); // 符号が逆
+  result.m[1][1] = cosf(radian);
   result.m[2][2] = 1.0f;
   result.m[3][3] = 1.0f;
-
   return result;
 }
+
 // 表示関数
 int kColumnWidth = 60;
 int kRowHeight = 20;
