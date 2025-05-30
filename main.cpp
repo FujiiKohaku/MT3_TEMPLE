@@ -11,18 +11,18 @@ struct Vector3 {
 };
 
 // 平行移動行列
-Matrix4x4 MakeTranslateMatrix(const Vector3 &translate) {
+Matrix4x4 MakeTranslateMatrix(const Vector3 &tlanslate) {
   Matrix4x4 result = {};
   result.m[0][0] = 1.0f;
   result.m[1][1] = 1.0f;
   result.m[2][2] = 1.0f;
   result.m[3][3] = 1.0f;
-  result.m[0][3] = translate.x;
-  result.m[1][3] = translate.y;
-  result.m[2][3] = translate.z;
+  result.m[3][0] = tlanslate.x;
+  result.m[3][1] = tlanslate.y;
+  result.m[3][2] = tlanslate.z;
+
   return result;
 }
-
 // 拡大縮小行列
 Matrix4x4 Matrix4x4MakeScaleMatrix(const Vector3 &s) {
   Matrix4x4 result = {};
