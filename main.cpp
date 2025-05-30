@@ -290,13 +290,13 @@ Matrix4x4 Inverse(const Matrix4x4 m) {
 }
 
 // 透視投影行列
-Matrix4x4 MakePerspectiveFovMatrix(const float fovY, const float aspectRatio,
-                                   const float nearClip, const float farClip) {
+Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio,
+                                   float nearClip, float farClip) {
   Matrix4x4 result = {};
 
   float f = 1.0f / std::tan(fovY / 2.0f);
 
-  result.m[0][0] = f / aspectRatio;
+  result.m[0][0] = f / aspectRatio; // ここ疑問
   result.m[1][1] = f;
   result.m[2][2] = farClip / (farClip - nearClip);
   result.m[2][3] = 1.0f;
@@ -305,9 +305,8 @@ Matrix4x4 MakePerspectiveFovMatrix(const float fovY, const float aspectRatio,
   return result;
 }
 // 正射影行列
-Matrix4x4 MakeOrthographicMatrix(const float left, const float top,
-                                 const float right, const float bottom,
-                                 const float nearClip, const float farClip) {
+Matrix4x4 MakeOrthographicMatrix(float left, float top, float right,
+                                 float bottom, float nearClip, float farClip) {
   Matrix4x4 m = {};
 
   m.m[0][0] = 2.0f / (right - left);
@@ -321,9 +320,8 @@ Matrix4x4 MakeOrthographicMatrix(const float left, const float top,
   return m;
 }
 // ビューポート変換行列
-Matrix4x4 MakeViewportMatrix(const float left, const float top,
-                             const float width, const float height,
-                             const float minDepth, const float maxDepth) {
+Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height,
+                             float minDepth, float maxDepth) {
   Matrix4x4 m = {};
 
   // 行0：X方向スケーリングと移動
@@ -337,6 +335,7 @@ Matrix4x4 MakeViewportMatrix(const float left, const float top,
 
   return m;
 }
+
 // 加算
 Vector3 Add(const Vector3 &v1, const Vector3 &v2) {
   Vector3 result;
