@@ -381,32 +381,37 @@ Vector3 Nomalize(const Vector3 &v) {
 // 球体作成関数
 void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
                 const Matrix4x4 &viewportMatrix, uint32_t color) {
-  const uint32_t kSubdivision = 16; // 分割数（大きいほどなめらか）
+
+  const uint32_t kSubdivision = 16; // 分割数
   const float kLonEvery =
-      2.0f * float(M_PI) / float(kSubdivision); // 経度の1つ分の角度
+      2.0f * float(M_PI) / kSubdivision; // 経度ステップ（0～2π）
   const float kLatEvery =
-      float(M_PI) / float(kSubdivision); // 緯度の1つ分の角度
+      float(M_PI) / kSubdivision; // 緯度ステップ（-π/2～π/2）
 
+  // 緯度方向にループ -π/2 ～ +π/2
   for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-    float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex; // 現在の緯度
-    float nextLat = lat + kLatEvery;                        // 次の緯度
+    float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex;
 
+    // 経度方向にループ 0 ～ 2π
     for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-      float lon = lonIndex * kLonEvery; // 現在の経度
-      float nextLon = lon + kLonEvery;  // 次の経度
+      float lon = lonIndex * kLonEvery;
 
-      // 球面上の3点を求める
+      // 球面上の3点（a, b, c）を求める
       Vector3 a = {sphere.center.x + sphere.radius * cosf(lat) * cosf(lon),
                    sphere.center.y + sphere.radius * sinf(lat),
                    sphere.center.z + sphere.radius * cosf(lat) * sinf(lon)};
-      Vector3 b = {sphere.center.x + sphere.radius * cosf(nextLat) * cosf(lon),
-                   sphere.center.y + sphere.radius * sinf(nextLat),
-                   sphere.center.z + sphere.radius * cosf(nextLat) * sinf(lon)};
-      Vector3 c = {sphere.center.x + sphere.radius * cosf(lat) * cosf(nextLon),
-                   sphere.center.y + sphere.radius * sinf(lat),
-                   sphere.center.z + sphere.radius * cosf(lat) * sinf(nextLon)};
 
-      // ワールド座標→スクリーン座標へ変換
+      Vector3 b = {
+          sphere.center.x + sphere.radius * cosf(lat + kLatEvery) * cosf(lon),
+          sphere.center.y + sphere.radius * sinf(lat + kLatEvery),
+          sphere.center.z + sphere.radius * cosf(lat + kLatEvery) * sinf(lon)};
+
+      Vector3 c = {
+          sphere.center.x + sphere.radius * cosf(lat) * cosf(lon + kLonEvery),
+          sphere.center.y + sphere.radius * sinf(lat),
+          sphere.center.z + sphere.radius * cosf(lat) * sinf(lon + kLonEvery)};
+
+      // スクリーン座標に変換
       Vector3 screenA =
           Transform(Transform(a, viewProjectionMatrix), viewportMatrix);
       Vector3 screenB =
@@ -414,10 +419,9 @@ void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
       Vector3 screenC =
           Transform(Transform(c, viewProjectionMatrix), viewportMatrix);
 
-      // abとacに線を引く
+      // ab, ac に線を引く
       Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenB.x),
                        int(screenB.y), color);
-
       Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenC.x),
                        int(screenC.y), color);
     }
@@ -617,7 +621,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       isHit = true;
     } else {
       isHit = false;
-        }
+    }
 
     if (keys[DIK_W]) {
       translateSphere.y++;
