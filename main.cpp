@@ -543,6 +543,8 @@ bool isCollision(const Sphere &sphere, const Plane &plane) {
 
 #pragma endregion
 
+int spherColor = WHITE;
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -617,25 +619,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Matrix4x4 sphereWorldViewProjectionMatrix =
         Multiply(sphereWorldMatrix, Multiply(viewMatrix, projectionMatrix));
 
-    if (isCollision(sphere, groundPlane)) {
-      isHit = true;
-    } else {
-      isHit = false;
-    }
+    groundPlane.nomal = {0.0f, 1.0f, 0.0f};
+    groundPlane.distance = Dot(groundPlane.nomal, translatePlane);
 
-    if (keys[DIK_W]) {
-      translateSphere.y++;
-    }
-    if (keys[DIK_S]) {
-      translateSphere.y--;
-    }
-    if (keys[DIK_A]) {
-      translatePlane.z += 0.01f;
-    }
-    if (keys[DIK_D]) {
-      translatePlane.z -= 0.01f;
-    }
-
+    isHit = isCollision(sphere, groundPlane);
+    spherColor = isHit ? WHITE : RED;
     // デバックのやつ
     ImGui::Begin("window");
     ImGui::DragFloat3("CameraTranslate", &cameraTransLate.x, 0.01f);
@@ -645,7 +633,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
     ImGui::End();
 
-    
     // 球2個目計算
     ///
     /// ↑更新処理ここまで
@@ -660,7 +647,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     DrawPlane(groundPlane, planeWorldViewProjectionMatrix, viewportMatrix,
               WHITE);
 
-    DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix, WHITE);
+    DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix,
+               spherColor);
 
     ///
     /// ↑描画処理ここまで
