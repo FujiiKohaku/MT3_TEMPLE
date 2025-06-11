@@ -489,6 +489,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   sphere2.radius = 2.0f;
   sphere2.center = {-4.0f, 0.0f, 10.0f};
 
+  int sphereColor = WHITE;
   // 球の生存フラグ
   int sphereIsAlive = true;
   // ウィンドウの×ボタンが押されるまでループ
@@ -550,7 +551,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     } else {
       sphereIsAlive = true;
     }
-
+    if (!sphereIsAlive) {
+      sphereColor = RED;
+    } else {
+      sphereColor = WHITE;
+    }
     ImGui::Begin("sphere");
     ImGui::DragFloat3("translate[0]", &sphere1.center.x, 0.1f);
     ImGui::DragFloat3("translate[1]", &sphere2.center.x, 0.1f);
@@ -567,12 +572,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     /// ↓描画処理ここから
     ///
     DrawGrid(gridWorldViewProjectionMatrix, viewportMatrix);
-    if (sphereIsAlive) {
-      DrawSphere(sphere1, sphere1WorldViewProjectionMatrix, viewportMatrix,
-                 RED);
-      DrawSphere(sphere2, sphere2WorldViewProjectionMatrix, viewportMatrix,
-                 BLUE);
-    }
+
+    DrawSphere(sphere1, sphere1WorldViewProjectionMatrix, viewportMatrix,
+               WHITE);
+
+    DrawSphere(sphere2, sphere2WorldViewProjectionMatrix, viewportMatrix,
+               sphereColor);
+
     // ※描画位置は translateSphere1 から作った行列で決まる
     //   → sphere1.center は DrawSphere では位置に影響しない
     //   → なので translate を使っても描画は動く
