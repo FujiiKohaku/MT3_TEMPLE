@@ -23,23 +23,8 @@ struct Sphere {
   Vector3 center;
   float radius;
 };
-
-struct Line {
-  Vector3 origin; // 始点
-  Vector3 diff;   // 終点への差分ベクトル
-};
-
-struct Ray {
-  Vector3 origin; // 始点
-  Vector3 diff;   // 終点への差分ベクトル
-};
-
-struct Segment {
-  Vector3 origin; // 始点
-  Vector3 diff;   // 終点への差分ベクトル
-};
 struct Plane {
-  Vector3 nomal;  // 法線
+  Vector3 normal;  // 法線
   float distance; // 距離
 };
 
@@ -147,6 +132,7 @@ void MatrixScreenPrintf(const int x, const int y, const Matrix4x4 &matirix,
     }
   }
 }
+
 // 行列の積
 Matrix4x4 Multiply(const Matrix4x4 &m1, const Matrix4x4 &m2) {
   Matrix4x4 result{};
@@ -485,61 +471,54 @@ Vector3 Perpendicular(const Vector3 &vector) {
   return {0.0f, -vector.z, vector.y};
 }
 
-void DrawPlane(const Plane &plane, const Matrix4x4 &viewProjectionMatrix,
-               const Matrix4x4 &viewportMatrix, uint32_t color) {
-  // 平面上の中心点
-  Vector3 center = Multiply(plane.distance, plane.nomal); // 1
-
-  // 平面上に広がる2軸を作る
-  Vector3 perpendiculars[4];
-  perpendiculars[0] = Nomalize(Perpendicular(plane.nomal)); // X軸方向
-  perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y,
-                       -perpendiculars[0].z}; // -X方向
-  perpendiculars[2] =
-      Cross(plane.nomal, perpendiculars[0]); // Y軸方向（法線と直交）
-  perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y,
-                       -perpendiculars[2].z}; // -Y方向
-
-  // 平面の4点を定義
-  Vector3 points[4];
-  for (int32_t index = 0; index < 4; ++index) {
-    Vector3 extend =
-        Multiply(2.0f, perpendiculars[index]); // 大きさ調整（広がり）
-    Vector3 point = Add(center, extend);       // 中心 + オフセット
-
-    // 各頂点をスクリーン座標に変換
-    points[index] = Transform(Transform(point, viewProjectionMatrix),
-                              viewportMatrix); // w除算はTransform内で1回だけ
-  }
-
-  // 外枠線を描画
-  Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[2].x,
-                   (int)points[2].y, color); // 0-2
-  Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[1].x,
-                   (int)points[1].y, color); // 2-1
-  Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[3].x,
-                   (int)points[3].y, color); // 1-3
-  Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[0].x,
-                   (int)points[0].y, color); // 3-0
-
-  // 塗りつぶし（三角形2枚で四角形を描画）
-  Novice::DrawTriangle((int)points[0].x, (int)points[0].y, (int)points[2].x,
-                       (int)points[2].y, (int)points[1].x, (int)points[1].y,
-                       color, kFillModeWireFrame);
-
-  Novice::DrawTriangle((int)points[1].x, (int)points[1].y, (int)points[3].x,
-                       (int)points[3].y, (int)points[0].x, (int)points[0].y,
-                       color, kFillModeWireFrame);
-}
-
 // 平面と球体の当たり判定の関数
 bool isCollision(const Sphere &sphere, const Plane &plane) {
   // 球の中心と平面の法線の内積を取り、平面までの距離を求める
-  float distance = Dot(sphere.center, plane.nomal) - plane.distance;
+  float distance = Dot(sphere.center, plane.normal) - plane.distance;
 
   // 距離の絶対値が半径以下であれば、球は平面と衝突していると判定する
   return std::fabs(distance) <= sphere.radius;
 }
+void DrawPlane(const Plane &plane, const Matrix4x4 &viewProjectionMatrix,
+               const Matrix4x4 &viewportMatrix, uint32_t color) {
+  // 平面の中心座標
+  Vector3 center = {plane.normal.x * plane.distance,
+                    plane.normal.y * plane.distance,
+                    plane.normal.z * plane.distance};
+
+  // 法線と垂直なベクトル2つ
+  Vector3 tangent = Nomalize(Perpendicular(plane.normal));
+  Vector3 bitangent = Nomalize(Cross(plane.normal, tangent));
+
+  float planeSize = 2.0f; // 描画サイズ半径
+
+  // 平面の4頂点
+  Vector3 localPoints[4] = {{-planeSize, 0.0f, -planeSize},
+                            {planeSize, 0.0f, -planeSize},
+                            {planeSize, 0.0f, planeSize},
+                            {-planeSize, 0.0f, planeSize}};
+
+  Vector3 worldPoints[4];
+  for (int i = 0; i < 4; ++i) {
+    // tangentsとbitangentsの組み合わせでXY平面に矩形生成
+    Vector3 offset = {
+        tangent.x * localPoints[i].x + bitangent.x * localPoints[i].z,
+        tangent.y * localPoints[i].x + bitangent.y * localPoints[i].z,
+        tangent.z * localPoints[i].x + bitangent.z * localPoints[i].z};
+    Vector3 worldPos = {center.x + offset.x, center.y + offset.y,
+                        center.z + offset.z};
+    worldPoints[i] =
+        Transform(Transform(worldPos, viewProjectionMatrix), viewportMatrix);
+  }
+
+  for (int i = 0; i < 4; ++i) {
+    int next = (i + 1) % 4;
+    Novice::DrawLine((int)worldPoints[i].x, (int)worldPoints[i].y,
+                     (int)worldPoints[next].x, (int)worldPoints[next].y, color);
+  }
+}
+
+
 
 #pragma endregion
 
@@ -556,9 +535,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   char preKeys[256] = {0};
 
 #pragma region 初期化
-  Plane groundPlane;
-  groundPlane.nomal = {0.0f, 1.0f, 0.0f};
-  groundPlane.distance = 0.0f;
+  Plane plane;
+  plane.normal = {0.0f, 1.0f, 0.0f};
+  plane.distance = 0.0f;
   Sphere sphere; // ok
   sphere.center = {0.0f, 0.0f, 0.0f};
   sphere.radius = 2;
@@ -572,9 +551,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
   bool isHit = false;
 
-  // GRID計算
-  //
-
+ 
+  plane.distance = Dot(plane.normal, translatePlane);
 #pragma endregion
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
@@ -619,18 +597,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Matrix4x4 sphereWorldViewProjectionMatrix =
         Multiply(sphereWorldMatrix, Multiply(viewMatrix, projectionMatrix));
 
-    groundPlane.nomal = {0.0f, 1.0f, 0.0f};
-    groundPlane.distance = Dot(groundPlane.nomal, translatePlane);
+    plane.normal = Nomalize({plane.normal});
 
-    isHit = isCollision(sphere, groundPlane);
+    isHit = isCollision(sphere, plane);
     spherColor = isHit ? WHITE : RED;
     // デバックのやつ
-    ImGui::Begin("window");
+    ImGui::Begin("Window");
     ImGui::DragFloat3("CameraTranslate", &cameraTransLate.x, 0.01f);
     ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-    ImGui::DragFloat3("SpherCenter", &sphere.center.x, 0.01f);
-    ImGui::DragFloat3("SpherTranslate", &translateSphere.x, 0.01f);
-    ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
+    ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
+    ImGui::DragFloat("SphereA Radius", &sphere.radius, 0.01f);
+
+    ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
+    ImGui::DragFloat("Plane.Distance", &plane.distance, 0.01f);
+
     ImGui::End();
 
     // 球2個目計算
@@ -644,7 +624,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // グリッド描画
     DrawGrid(gridWorldViewProjectionMatrix, viewportMatrix);
     // 矩形描画
-    DrawPlane(groundPlane, planeWorldViewProjectionMatrix, viewportMatrix,
+    DrawPlane(plane, planeWorldViewProjectionMatrix, viewportMatrix,
               WHITE);
 
     DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix,
