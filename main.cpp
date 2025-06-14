@@ -5,35 +5,41 @@
 #include <imgui.h>
 #include <math.h>
 #include <stdio.h>
-const char kWindowTitle[] = "LE2C_25_フジイ_コハク";
-struct Matrix4x4 {
-  float m[4][4];
-};
 
-struct Vector3 {
+const char kWindowTitle[] = "LE2C_25_フジイ_コハク";
+struct Vector3 { // ok
   float x, y, z;
 };
 
-struct Sphere {
+struct Plane {    // ok
+  Vector3 normal; // 法線
+  float distance; // 距離
+};
+struct Matrix4x4 { // ok
+  float m[4][4];
+};
+struct Sphere { // ok
   Vector3 center;
   float radius;
-};
-
-struct Line {
-  Vector3 origin; // 始点
-  Vector3 diff;   // 終点への差分ベクトル
-};
-
-struct Ray {
-  Vector3 origin; // 始点
-  Vector3 diff;   // 終点への差分ベクトル
 };
 
 struct Segment {
   Vector3 origin; // 始点
   Vector3 diff;   // 終点への差分ベクトル
 };
-
+struct Ray {
+  Vector3 origin; // 始点
+  Vector3 diff;   // 終点への差分ベクトル
+};
+struct Line {
+  Vector3 origin; // 始点
+  Vector3 diff;   // 終点への差分ベクトル
+};
+enum class LineType {
+  Infinite, // 無限直線
+  Ray,      // 半直線
+  Segment   // 線分
+};
 #pragma region 関数
 // クロス積
 Vector3 Cross(const Vector3 &v1, const Vector3 &v2) {
@@ -66,26 +72,21 @@ Matrix4x4 Matrix4x4MakeScaleMatrix(const Vector3 &s) {
   return result;
 }
 // 座標変換
-Vector3 Transform(const Vector3 &vector, const Matrix4x4 &matrix) {
-  Vector3 result;
-  result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] +
-             vector.z * matrix.m[2][0] + 1.0f * matrix.m[3][0];
-
-  result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] +
-             vector.z * matrix.m[2][1] + 1.0f * matrix.m[3][1];
-
-  result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] +
-             vector.z * matrix.m[2][2] + 1.0f * matrix.m[3][2];
-
-  float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] +
-            vector.z * matrix.m[2][3] + 1.0f * matrix.m[3][3];
-  assert(w != 0.0f);
-  result.x /= w;
-  result.y /= w;
-  result.z /= w;
-
-  return result;
+// ベクトルを変換
+Vector3 Transform(const Vector3 &v, const Matrix4x4 &m) // ok
+{
+  float x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
+  float y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
+  float z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
+  float w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
+  if (w != 0.0f) {
+    x /= w;
+    y /= w;
+    z /= w;
+  }
+  return {x, y, z};
 }
+
 // X軸回転行列
 Matrix4x4 MakeRotateXMatrix(const float radian) {
   Matrix4x4 result = {};
@@ -354,16 +355,19 @@ Vector3 Multiply(const float scalar, const Vector3 &v2) {
   return result;
 }
 // 内積
-float Dot(const Vector3 &v1, const Vector3 &v2) {
+float Dot(const Vector3 &v1, const Vector3 &v2) // ok
+{
   return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 // 長さ（ノルム）
-float Length(const Vector3 &v) {
+float Length(const Vector3 &v) // ok
+{
   return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 // 正規化
-Vector3 Nomalize(const Vector3 &v) {
+Vector3 Nomalize(const Vector3 &v) // ok
+{
   float length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
   if (length == 0.0f) {
     return {0.0f, 0.0f, 0.0f};
@@ -465,50 +469,112 @@ void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
                      int(endScreen.y), color);
   }
 }
+// 入力されたベクトルに対してそれと垂直になるようなベクトルを返している。
+Vector3 Perpendicular(const Vector3 &vector) {
+  if (vector.x != 0.0f || vector.y != 0.0f) {
+
+    return {-vector.y, vector.x, 0.0f};
+  }
+  return {0.0f, -vector.z, vector.y};
+}
+
+//// 平面と球体の当たり判定の関数
+// bool IsCollision(const Sphere& sphere, const Plane& plane)
+//{
+//     // 法線が正規化されていることを保証
+//     Vector3 normalizedNormal = Nomalize(plane.normal);
+//
+//     // 平面と球の中心との距離
+//     float distance = Dot(sphere.center, normalizedNormal) - plane.distance;
+//
+//     // 距離が球の半径以下なら衝突
+//     return std::fabs(distance) <= sphere.radius;
+// }
+
+void DrawPlane(const Plane &plane, const Matrix4x4 &vieprojectionMatrix,
+               const Matrix4x4 &viewportMatrix, uint32_t color) {
+  // 平面上の点を求めるすでに分かっているdistanceとnormal法線を利用する
+  Vector3 center = Multiply(plane.distance, plane.normal); // 1
+  // 垂直方向のベクトル(例：平面上に広がる4つの点)を保持する配列
+  Vector3 perpendiculars[4];
+  // plane.normalに垂直なベクトルを返してNormalizeで正規化したものを0番目の配列に格納
+  // なんか平面の向きが決まるらしいね
+  perpendiculars[0] = Nomalize(Perpendicular(plane.normal)); // 2
+  // 逆ベクトルを求めます(perpendiculars[0]の)
+  // 逆ベクトルを求めることによって平面の中心から両側に広がる形を作れる
+  perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y,
+                       -perpendiculars[0].z}; // 3
+  // 平面の法線と、すでにある垂直ベクトルとの外積で、平面上のもう1つの直交方向ベクトルを求めました
+  // 四角を作るため
+  perpendiculars[2] = Nomalize(Cross(plane.normal, perpendiculars[0])); // 4
+  /// ここまで法線を中心に縦横のベクトルを求めていた
+  // 縦方向ベクトルの逆を作って平面の中心から上下左右すべての方向に広がるようにするため
+  perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y,
+                       -perpendiculars[2].z};
+
+  Vector3 points[4];
+
+  for (int index = 0; index < 4; ++index) {
+    // 単位ベクトル(長さ=1)を2倍に伸ばしている
+    //  perpendiculars[]この配列の中どれが右とかない
+    //  だけど向いている方向が違うから四角形が作れる
+    Vector3 extend = Multiply(2.0f, perpendiculars[index]);
+    // 中心からある方向に伸ばした位置にある一点を計算している
+    Vector3 point = Add(center, extend);
+    points[index] =
+        Transform(Transform(point, vieprojectionMatrix), viewportMatrix);
+  }
+  // 線を引く
+  Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[1].x,
+                   (int)points[1].y, color); // top → right
+  Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[2].x,
+                   (int)points[2].y, color); // right → bottom
+  Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[0].x,
+                   (int)points[0].y, color); // bottom → left
+  Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[3].x,
+                   (int)points[3].y, color); // left → top
+}
+
+#pragma endregion
+
+bool IsCollision(const Vector3 &origin, const Vector3 &diff,
+                 const Plane &plane) {
+  // 平面の法線と線の方向ベクトルの内積
+  float dot = plane.normal.x * diff.x + plane.normal.y * diff.y +
+              plane.normal.z * diff.z;
+
+  // 線と平面が平行なら交差しない（内積0）
+  if (dot == 0.0f) {
+    return false;
+  }
+
+  // 交点の媒介変数tを求める
+  float t =
+      (plane.distance - (origin.x * plane.normal.x + origin.y * plane.normal.y +
+                         origin.z * plane.normal.z)) /
+      dot;
+  return (t >= 0.0f && t <= 1.0f);
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+
   // ライブラリの初期化
   Novice::Initialize(kWindowTitle, 1280, 720);
 
   // キー入力結果を受け取る箱
   char keys[256] = {0};
   char preKeys[256] = {0};
-
+  int color = WHITE;
   // 初期化,定義
-  Sphere sphere1 = {};
-  Sphere sphere2 = {};
-  Vector3 rotate{}; 
-  Vector3 translateSphere1{};
-  Vector3 translateSphere2{};
+  Vector3 rotate = {};
+  Vector3 translate = {};
   Vector3 cameraTransLate{0.0f, 1.9f, -6.49f};
   Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
   int kWindowWidth = 1280;
   int kWindowHeight = 720;
-  sphere1.radius = 2.0f;
-  sphere1.center = {4.0f, 0.0f, 10.0f};
-  sphere2.radius = 2.0f;
-  sphere2.center = {-4.0f, 0.0f, 10.0f};
-  // 万国共通カメラマトリックス
-  Matrix4x4 cameraMatrix =
-      MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
-  // カメラを逆さにviewMatrix
-  Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-  // portを追加
-  Matrix4x4 viewportMatrix = MakeViewportMatrix(
-      0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
-  // 透視投影行列の計算
-  Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
-      float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
-  // GRID計算
-  // Grid用のWorldViewProjection行列（ワールド行列は単位行列）
-  Matrix4x4 gridWorldMatrix = MakeIdentity4x4(); // 単位行列（何も変換しない）
-  Matrix4x4 gridWorldViewProjectionMatrix =
-      Multiply(gridWorldMatrix, Multiply(viewMatrix, projectionMatrix));
-  // GRID計算
-  //
-
-  // 球の生存フラグ
-  int sphereIsAlive = true;
+  static Plane plane = {{0.0f, 1.0f, 0.0f}, 0.0f};
+  static Segment segment = {{0.0f, 1.0f, -1.0f}, {0.0f, -2.0f, 2.0f}};
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
     // フレームの開始
@@ -521,62 +587,64 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓更新処理ここから
     ///
+    plane.normal = Nomalize(plane.normal);
+    // スケール × 回転 × 平行移動 = カメラの世界行列（位置と向き）
+    Matrix4x4 cameraMatrix =
+        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
+    // 視点座標系に変換（カメラの逆変換）＝ビュー行列
+    Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+    // 透視投影（遠近感を加える）
+    // 透視投影行列の計算
+    Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
+        float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
+    // NDC（-1〜+1）を画面ピクセル座標に変換する
+    Matrix4x4 viewportMatrix = MakeViewportMatrix(
+        0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+    Matrix4x4 WorldViewProjectionMatrix =
+        Multiply(viewMatrix, projectionMatrix);
 
-    // 球1個目計算
-    Matrix4x4 sphere1WorldMatrix =
-        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translateSphere1);
-    Matrix4x4 sphere1WorldViewProjectionMatrix =
-        Multiply(sphere1WorldMatrix, Multiply(viewMatrix, projectionMatrix));
-    // 球2個目計算
-    Matrix4x4 sphere2WorldMatrix =
-        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translateSphere2);
-    Matrix4x4 sphere2WorldViewProjectionMatrix =
-        Multiply(sphere2WorldMatrix, Multiply(viewMatrix, projectionMatrix));
-    // スペースキー押したら球は動き出す
-    // スペースキー押したら球は動き出す
-    if (keys[DIK_A]) {
-      sphere1.center.x -= 0.1f;
-      sphere2.center.x += 0.1f;
-    }
-    if (keys[DIK_D]) {
-      sphere1.center.x += 0.1f;
-      sphere2.center.x -= 0.1f;
-    }
-    // または、単純に viewMatrix * projectionMatrix だけでもいい
-    float distance = Length(Subtract(sphere1.center, sphere2.center));
-    // 半径の合計よりも短ければ衝突
-    if (distance <= sphere1.radius + sphere2.radius) {
-      sphereIsAlive = false;
+    // 線
+    Matrix4x4 worldMatrix =
+        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translate);
+    Matrix4x4 LineViewProjectionMatrix =
+        Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+    Vector3 start = Transform(
+        Transform(segment.origin, LineViewProjectionMatrix), viewportMatrix);
+    Vector3 end = Transform(
+        Transform(Add(segment.origin, segment.diff), LineViewProjectionMatrix),
+        viewportMatrix);
+
+    int hit = IsCollision(segment.origin, segment.diff, plane);
+
+    if (hit) {
+      color = RED;
+
     } else {
-      sphereIsAlive = true;
+      color = WHITE;
     }
-    ///
+    ImGui::Begin("Control Panel");
+
+    // Planeの法線ベクトル（正規化された値なので単位ベクトルに注意）
+    ImGui::Text("Plane");
+    ImGui::DragFloat3("Plane Normal", &plane.normal.x, 0.01f, -1.0f, 1.0f);
+    ImGui::DragFloat("Plane Distance", &plane.distance, 0.01f, -10.0f, 10.0f);
+
+    // Segmentの始点と終点方向
+    ImGui::Separator();
+    ImGui::Text("Segment");
+    ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f, -10.0f,
+                      10.0f);
+    ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f, -10.0f, 10.0f);
+
+    ImGui::End();
     /// ↑更新処理ここまで
     ///
 
     ///
     /// ↓描画処理ここから
     ///
-    DrawGrid(gridWorldViewProjectionMatrix, viewportMatrix);
-    if (sphereIsAlive) {
-      DrawSphere(sphere1, sphere1WorldViewProjectionMatrix, viewportMatrix,
-                 RED);
-      DrawSphere(sphere2, sphere2WorldViewProjectionMatrix, viewportMatrix,
-                 BLUE);
-    }
-    // ※描画位置は translateSphere1 から作った行列で決まる
-    //   → sphere1.center は DrawSphere では位置に影響しない
-    //   → なので translate を使っても描画は動く
-
-    // ※ただし、当たり判定では sphere1.center を使っている
-    //   → 描画と当たり判定で位置がズレてしまう
-
-    // ⇒ 対策：どちらかに統一すること
-    // [おすすめ] center を直接動かし、それを行列にも使う
-    //   sphere1.center.x += ...;
-    //   MakeAffineMatrix(..., sphere1.center);
-    //   → これで描画と当たり判定が完全に一致
-
+    DrawPlane(plane, WorldViewProjectionMatrix, viewportMatrix, RED);
+    Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), color);
     ///
     /// ↑描画処理ここまで
     ///
