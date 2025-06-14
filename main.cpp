@@ -1,34 +1,28 @@
-
 #define _USE_MATH_DEFINES
-#include "KamataEngine.h"
 #include <Novice.h>
 #include <assert.h>
 #include <cmath>
 #include <imgui.h>
 #include <math.h>
 #include <stdio.h>
-const char kWindowTitle[] = "LE2C_25_フジイ_コハク";
 
-#pragma region 構造体定期
+const char kWindowTitle[] = "学籍番号";
 
-struct Matrix4x4 {
-  float m[4][4];
-};
-
-struct Vector3 {
+struct Vector3 { // ok
   float x, y, z;
 };
 
-struct Sphere {
+struct Plane {    // ok
+  Vector3 normal; // 法線
+  float distance; // 距離
+};
+struct Matrix4x4 { // ok
+  float m[4][4];
+};
+struct Sphere { // ok
   Vector3 center;
   float radius;
 };
-struct Plane {
-  Vector3 normal;  // 法線
-  float distance; // 距離
-};
-
-#pragma endregion
 
 #pragma region 関数
 // クロス積
@@ -62,62 +56,60 @@ Matrix4x4 Matrix4x4MakeScaleMatrix(const Vector3 &s) {
   return result;
 }
 // 座標変換
-Vector3 Transform(const Vector3 &vector, const Matrix4x4 &matrix) {
-  Vector3 result;
-  result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] +
-             vector.z * matrix.m[2][0] + 1.0f * matrix.m[3][0];
-
-  result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] +
-             vector.z * matrix.m[2][1] + 1.0f * matrix.m[3][1];
-
-  result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] +
-             vector.z * matrix.m[2][2] + 1.0f * matrix.m[3][2];
-
-  float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] +
-            vector.z * matrix.m[2][3] + 1.0f * matrix.m[3][3];
-  assert(w != 0.0f);
-  result.x /= w;
-  result.y /= w;
-  result.z /= w;
-
-  return result;
+// ベクトルを変換
+Vector3 Transform(const Vector3 &v, const Matrix4x4 &m) // ok
+{
+  float x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
+  float y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
+  float z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
+  float w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
+  if (w != 0.0f) {
+    x /= w;
+    y /= w;
+    z /= w;
+  }
+  return {x, y, z};
 }
-// X軸回転行列（左手座標系）
-Matrix4x4 MakeRotateXMatrix(float radian) {
+
+// X軸回転行列
+Matrix4x4 MakeRotateXMatrix(const float radian) {
   Matrix4x4 result = {};
+
   result.m[0][0] = 1.0f;
-  result.m[1][1] = cosf(radian);
-  result.m[1][2] = sinf(radian);  // ← ここ符号変更
-  result.m[2][1] = -sinf(radian); // ← ここ符号変更
-  result.m[2][2] = cosf(radian);
+  result.m[1][1] = std::cos(radian);
+  result.m[1][2] = std::sin(radian);
+  result.m[2][1] = -std::sin(radian);
+  result.m[2][2] = std::cos(radian);
   result.m[3][3] = 1.0f;
+
   return result;
 }
-
-// Y軸回転行列（左手座標系）
-Matrix4x4 MakeRotateYMatrix(float radian) {
+// Y軸回転行列
+Matrix4x4 MakeRotateYMatrix(const float radian) {
   Matrix4x4 result = {};
-  result.m[0][0] = cosf(radian);
-  result.m[0][2] = -sinf(radian); // ← ここ符号変更
+
+  result.m[0][0] = std::cos(radian);
+  result.m[0][2] = std::sin(radian);
   result.m[1][1] = 1.0f;
-  result.m[2][0] = sinf(radian); // ← ここ符号変更
-  result.m[2][2] = cosf(radian);
+  result.m[2][0] = -std::sin(radian);
+  result.m[2][2] = std::cos(radian);
   result.m[3][3] = 1.0f;
+
   return result;
 }
-
-// Z軸回転行列（左右手共通）
-Matrix4x4 MakeRotateZMatrix(float radian) {
+// Z軸回転行列
+Matrix4x4 MakeRotateZMatrix(const float radian) {
   Matrix4x4 result = {};
-  result.m[0][0] = cosf(radian);
-  result.m[0][1] = sinf(radian);  // 符号が逆
-  result.m[1][0] = -sinf(radian); // 符号が逆
-  result.m[1][1] = cosf(radian);
+
+  result.m[0][0] = std::cos(radian);
+  result.m[0][1] = -std::sin(radian);
+  result.m[1][0] = std::sin(radian);
+  result.m[1][1] = std::cos(radian);
   result.m[2][2] = 1.0f;
   result.m[3][3] = 1.0f;
+
   return result;
 }
-
 // 表示関数
 int kColumnWidth = 60;
 int kRowHeight = 20;
@@ -132,7 +124,6 @@ void MatrixScreenPrintf(const int x, const int y, const Matrix4x4 &matirix,
     }
   }
 }
-
 // 行列の積
 Matrix4x4 Multiply(const Matrix4x4 &m1, const Matrix4x4 &m2) {
   Matrix4x4 result{};
@@ -276,13 +267,13 @@ Matrix4x4 Inverse(const Matrix4x4 m) {
 }
 
 // 透視投影行列
-Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio,
-                                   float nearClip, float farClip) {
+Matrix4x4 MakePerspectiveFovMatrix(const float fovY, const float aspectRatio,
+                                   const float nearClip, const float farClip) {
   Matrix4x4 result = {};
 
   float f = 1.0f / std::tan(fovY / 2.0f);
 
-  result.m[0][0] = f / aspectRatio; // ここ疑問
+  result.m[0][0] = f / aspectRatio;
   result.m[1][1] = f;
   result.m[2][2] = farClip / (farClip - nearClip);
   result.m[2][3] = 1.0f;
@@ -291,8 +282,9 @@ Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio,
   return result;
 }
 // 正射影行列
-Matrix4x4 MakeOrthographicMatrix(float left, float top, float right,
-                                 float bottom, float nearClip, float farClip) {
+Matrix4x4 MakeOrthographicMatrix(const float left, const float top,
+                                 const float right, const float bottom,
+                                 const float nearClip, const float farClip) {
   Matrix4x4 m = {};
 
   m.m[0][0] = 2.0f / (right - left);
@@ -306,8 +298,9 @@ Matrix4x4 MakeOrthographicMatrix(float left, float top, float right,
   return m;
 }
 // ビューポート変換行列
-Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height,
-                             float minDepth, float maxDepth) {
+Matrix4x4 MakeViewportMatrix(const float left, const float top,
+                             const float width, const float height,
+                             const float minDepth, const float maxDepth) {
   Matrix4x4 m = {};
 
   // 行0：X方向スケーリングと移動
@@ -321,7 +314,6 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height,
 
   return m;
 }
-
 // 加算
 Vector3 Add(const Vector3 &v1, const Vector3 &v2) {
   Vector3 result;
@@ -347,16 +339,19 @@ Vector3 Multiply(const float scalar, const Vector3 &v2) {
   return result;
 }
 // 内積
-float Dot(const Vector3 &v1, const Vector3 &v2) {
+float Dot(const Vector3 &v1, const Vector3 &v2) // ok
+{
   return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 // 長さ（ノルム）
-float Length(const Vector3 &v) {
+float Length(const Vector3 &v) // ok
+{
   return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 // 正規化
-Vector3 Nomalize(const Vector3 &v) {
+Vector3 Nomalize(const Vector3 &v) // ok
+{
   float length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
   if (length == 0.0f) {
     return {0.0f, 0.0f, 0.0f};
@@ -367,37 +362,32 @@ Vector3 Nomalize(const Vector3 &v) {
 // 球体作成関数
 void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
                 const Matrix4x4 &viewportMatrix, uint32_t color) {
-
-  const uint32_t kSubdivision = 16; // 分割数
+  const uint32_t kSubdivision = 16; // 分割数（大きいほどなめらか）
   const float kLonEvery =
-      2.0f * float(M_PI) / kSubdivision; // 経度ステップ（0～2π）
+      2.0f * float(M_PI) / float(kSubdivision); // 経度の1つ分の角度
   const float kLatEvery =
-      float(M_PI) / kSubdivision; // 緯度ステップ（-π/2～π/2）
+      float(M_PI) / float(kSubdivision); // 緯度の1つ分の角度
 
-  // 緯度方向にループ -π/2 ～ +π/2
   for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-    float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex;
+    float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex; // 現在の緯度
+    float nextLat = lat + kLatEvery;                        // 次の緯度
 
-    // 経度方向にループ 0 ～ 2π
     for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-      float lon = lonIndex * kLonEvery;
+      float lon = lonIndex * kLonEvery; // 現在の経度
+      float nextLon = lon + kLonEvery;  // 次の経度
 
-      // 球面上の3点（a, b, c）を求める
+      // 球面上の3点を求める
       Vector3 a = {sphere.center.x + sphere.radius * cosf(lat) * cosf(lon),
                    sphere.center.y + sphere.radius * sinf(lat),
                    sphere.center.z + sphere.radius * cosf(lat) * sinf(lon)};
+      Vector3 b = {sphere.center.x + sphere.radius * cosf(nextLat) * cosf(lon),
+                   sphere.center.y + sphere.radius * sinf(nextLat),
+                   sphere.center.z + sphere.radius * cosf(nextLat) * sinf(lon)};
+      Vector3 c = {sphere.center.x + sphere.radius * cosf(lat) * cosf(nextLon),
+                   sphere.center.y + sphere.radius * sinf(lat),
+                   sphere.center.z + sphere.radius * cosf(lat) * sinf(nextLon)};
 
-      Vector3 b = {
-          sphere.center.x + sphere.radius * cosf(lat + kLatEvery) * cosf(lon),
-          sphere.center.y + sphere.radius * sinf(lat + kLatEvery),
-          sphere.center.z + sphere.radius * cosf(lat + kLatEvery) * sinf(lon)};
-
-      Vector3 c = {
-          sphere.center.x + sphere.radius * cosf(lat) * cosf(lon + kLonEvery),
-          sphere.center.y + sphere.radius * sinf(lat),
-          sphere.center.z + sphere.radius * cosf(lat) * sinf(lon + kLonEvery)};
-
-      // スクリーン座標に変換
+      // ワールド座標→スクリーン座標へ変換
       Vector3 screenA =
           Transform(Transform(a, viewProjectionMatrix), viewportMatrix);
       Vector3 screenB =
@@ -405,15 +395,15 @@ void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
       Vector3 screenC =
           Transform(Transform(c, viewProjectionMatrix), viewportMatrix);
 
-      // ab, ac に線を引く
+      // abとacに線を引く
       Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenB.x),
                        int(screenB.y), color);
+
       Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenC.x),
                        int(screenC.y), color);
     }
   }
 }
-
 // Grid描画関数
 void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
               const Matrix4x4 &viewportMatrix) {
@@ -463,69 +453,91 @@ void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
                      int(endScreen.y), color);
   }
 }
-// 垂直ベクトルを取得
+
+#pragma endregion
+
+// 入力されたベクトルに対してそれと垂直になるようなベクトルを返している。
 Vector3 Perpendicular(const Vector3 &vector) {
-  if (vector.x != 0.0f || vector.y != 0.0) {
+  if (vector.x != 0.0f || vector.y != 0.0f) {
+
     return {-vector.y, vector.x, 0.0f};
   }
   return {0.0f, -vector.z, vector.y};
 }
 
 // 平面と球体の当たり判定の関数
-bool isCollision(const Sphere &sphere, const Plane &plane) {
-  // 球の中心と平面の法線の内積を取り、平面までの距離を求める
-  float distance = Dot(sphere.center, plane.normal) - plane.distance;
+bool IsCollision(const Sphere &sphere, const Plane &plane) {
+  // 法線が正規化されていることを保証
+  Vector3 normalizedNormal = Nomalize(plane.normal);
 
-  // 距離の絶対値が半径以下であれば、球は平面と衝突していると判定する
+  // 平面と球の中心との距離
+  float distance = Dot(sphere.center, normalizedNormal) - plane.distance;
+
+  // 距離が球の半径以下なら衝突
   return std::fabs(distance) <= sphere.radius;
 }
-void DrawPlane(const Plane &plane, const Matrix4x4 &viewProjectionMatrix,
+
+void DrawPlane(const Plane &plane, const Matrix4x4 &vieprojectionMatrix,
                const Matrix4x4 &viewportMatrix, uint32_t color) {
-  // 平面の中心座標
-  Vector3 center = {plane.normal.x * plane.distance,
-                    plane.normal.y * plane.distance,
-                    plane.normal.z * plane.distance};
+  // 平面上の点を求めるすでに分かっているdistanceとnormal法線を利用する
+  Vector3 center = Multiply(plane.distance, plane.normal); // 1
+  // 垂直方向のベクトル(例：平面上に広がる4つの点)を保持する配列
+  Vector3 perpendiculars[4];
+  // plane.normalに垂直なベクトルを返してNormalizeで正規化したものを0番目の配列に格納
+  // なんか平面の向きが決まるらしいね
+  perpendiculars[0] = Nomalize(Perpendicular(plane.normal)); // 2
+  // 逆ベクトルを求めます(perpendiculars[0]の)
+  // 逆ベクトルを求めることによって平面の中心から両側に広がる形を作れる
+  perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y,
+                       -perpendiculars[0].z}; // 3
+  // 平面の法線と、すでにある垂直ベクトルとの外積で、平面上のもう1つの直交方向ベクトルを求めました
+  // 四角を作るため
+  perpendiculars[2] = Nomalize(Cross(plane.normal, perpendiculars[0])); // 4
+  /// ここまで法線を中心に縦横のベクトルを求めていた
+  // 縦方向ベクトルの逆を作って平面の中心から上下左右すべての方向に広がるようにするため
+  perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y,
+                       -perpendiculars[2].z};
 
-  // 法線と垂直なベクトル2つ
-  Vector3 tangent = Nomalize(Perpendicular(plane.normal));
-  Vector3 bitangent = Nomalize(Cross(plane.normal, tangent));
+  Vector3 points[4];
 
-  float planeSize = 2.0f; // 描画サイズ半径
-
-  // 平面の4頂点
-  Vector3 localPoints[4] = {{-planeSize, 0.0f, -planeSize},
-                            {planeSize, 0.0f, -planeSize},
-                            {planeSize, 0.0f, planeSize},
-                            {-planeSize, 0.0f, planeSize}};
-
-  Vector3 worldPoints[4];
-  for (int i = 0; i < 4; ++i) {
-    // tangentsとbitangentsの組み合わせでXY平面に矩形生成
-    Vector3 offset = {
-        tangent.x * localPoints[i].x + bitangent.x * localPoints[i].z,
-        tangent.y * localPoints[i].x + bitangent.y * localPoints[i].z,
-        tangent.z * localPoints[i].x + bitangent.z * localPoints[i].z};
-    Vector3 worldPos = {center.x + offset.x, center.y + offset.y,
-                        center.z + offset.z};
-    worldPoints[i] =
-        Transform(Transform(worldPos, viewProjectionMatrix), viewportMatrix);
+  for (int index = 0; index < 4; ++index) {
+    // 単位ベクトル(長さ=1)を2倍に伸ばしている
+    //  perpendiculars[]この配列の中どれが右とかない
+    //  だけど向いている方向が違うから四角形が作れる
+    Vector3 extend = Multiply(2.0f, perpendiculars[index]);
+    // 中心からある方向に伸ばした位置にある一点を計算している
+    Vector3 point = Add(center, extend);
+    points[index] =
+        Transform(Transform(point, vieprojectionMatrix), viewportMatrix);
   }
-
-  for (int i = 0; i < 4; ++i) {
-    int next = (i + 1) % 4;
-    Novice::DrawLine((int)worldPoints[i].x, (int)worldPoints[i].y,
-                     (int)worldPoints[next].x, (int)worldPoints[next].y, color);
-  }
+  // 線を引く
+  Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[1].x,
+                   (int)points[1].y, color); // top → right
+  Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[2].x,
+                   (int)points[2].y, color); // right → bottom
+  Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[0].x,
+                   (int)points[0].y, color); // bottom → left
+  Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[3].x,
+                   (int)points[3].y, color); // left → top
 }
-
-
-
-#pragma endregion
-
-int spherColor = WHITE;
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+  // 平面
+  int kWindowWidth = 1280;
+  int kWindowHeight = 720;
+  // 平面
+  Plane plane;
+  plane.normal = {0.0f, 1.0f, 0.0f};
+  plane.distance = 2.0f;
+  Sphere sphere = {};
+  sphere.radius = 2.0f;
+  sphere.center = {0.0f, 0.0f, 10.0f};
+  Vector3 rotate{};
+  Vector3 translateSphere{};
+  Vector3 cameraTransLate{0.0f, 1.9f, -6.49f};
+  Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
+  int sphereColor = WHITE;
 
   // ライブラリの初期化
   Novice::Initialize(kWindowTitle, 1280, 720);
@@ -534,26 +546,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   char keys[256] = {0};
   char preKeys[256] = {0};
 
-#pragma region 初期化
-  Plane plane;
-  plane.normal = {0.0f, 1.0f, 0.0f};
-  plane.distance = 0.0f;
-  Sphere sphere; // ok
-  sphere.center = {0.0f, 0.0f, 0.0f};
-  sphere.radius = 2;
-  Vector3 rotate{};                            // ok
-  Vector3 translatePlane{};                    // ok
-  Vector3 translateSphere{};                   // ok
-  Vector3 cameraTransLate{0.0f, 1.9f, -6.49f}; // ok
-  Vector3 cameraRotate{0.26f, 0.0f, 0.0f};     // ok
-  int kWindowWidth = 1280;
-  int kWindowHeight = 720;
-
-  bool isHit = false;
-
- 
-  plane.distance = Dot(plane.normal, translatePlane);
-#pragma endregion
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
     // フレームの開始
@@ -566,54 +558,52 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓更新処理ここから
     ///
-
-    // 万国共通カメラマトリックス
+    // カメラのアフィン変換行列（スケール=1）
     Matrix4x4 cameraMatrix =
         MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
-    // カメラを逆さにviewMatrix
+
+    // ビュー行列（カメラの逆変換）
     Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-    // portを追加
-    Matrix4x4 viewportMatrix = MakeViewportMatrix(
-        0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
-    // 透視投影行列の計算
+
+    // ビューポート行列（スクリーン座標変換）
+    Matrix4x4 viewportMatrix =
+        MakeViewportMatrix(0.0f, 0.0f, static_cast<float>(kWindowWidth),
+                           static_cast<float>(kWindowHeight), 0.0f, 1.0f);
+
+    // 透視投影行列の作成
     Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
-        float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
-    // GRID計算
-    // Grid用のWorldViewProjection行列（ワールド行列は単位行列）
-    Matrix4x4 gridWorldMatrix = MakeIdentity4x4(); // 単位行列（何も変換しない）
-    Matrix4x4 gridWorldViewProjectionMatrix =
-        Multiply(gridWorldMatrix, Multiply(viewMatrix, projectionMatrix));
-    // 矩形
-    Matrix4x4 planeWorldMatrix =
-        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translatePlane);
-    //
-    Matrix4x4 planeWorldViewProjectionMatrix =
-        Multiply(planeWorldMatrix, Multiply(viewMatrix, projectionMatrix));
+        0.45f,
+        static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
+        0.1f, 100.0f);
 
-    // 球体
-    Matrix4x4 sphereWorldMatrix =
-        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translateSphere);
+    // ビュー投影行列
+    Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 
-    Matrix4x4 sphereWorldViewProjectionMatrix =
-        Multiply(sphereWorldMatrix, Multiply(viewMatrix, projectionMatrix));
-
-    plane.normal = Nomalize({plane.normal});
-
-    isHit = isCollision(sphere, plane);
-    spherColor = isHit ? WHITE : RED;
-    // デバックのやつ
     ImGui::Begin("Window");
-    ImGui::DragFloat3("CameraTranslate", &cameraTransLate.x, 0.01f);
-    ImGui::DragFloat3("CameraRotate", &cameraRotate.x, 0.01f);
-    ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
-    ImGui::DragFloat("SphereA Radius", &sphere.radius, 0.01f);
 
     ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
     ImGui::DragFloat("Plane.Distance", &plane.distance, 0.01f);
+    ImGui::Text("sphere");
+    ImGui::DragFloat3("sphere.center", &sphere.center.x, 0.01f);
 
+    ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
+    ImGui::DragFloat("Plane.Distance", &plane.distance, 0.01f);
+    ImGui::Text("Normalized Normal: %.2f, %.2f, %.2f", plane.normal.x,
+                plane.normal.y, plane.normal.z);
+    ImGui::Text("Sphere Center: %.2f, %.2f, %.2f", sphere.center.x,
+                sphere.center.y, sphere.center.z);
+    ImGui::Text("Collision: %s", IsCollision(sphere, plane) ? "True" : "False");
     ImGui::End();
 
-    // 球2個目計算
+    plane.normal = Nomalize(plane.normal);
+
+    bool isHit = IsCollision(sphere, plane);
+
+    if (isHit) {
+      sphereColor = RED;
+    } else {
+      sphereColor = WHITE;
+    }
     ///
     /// ↑更新処理ここまで
     ///
@@ -621,15 +611,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓描画処理ここから
     ///
-    // グリッド描画
-    DrawGrid(gridWorldViewProjectionMatrix, viewportMatrix);
-    // 矩形描画
-    DrawPlane(plane, planeWorldViewProjectionMatrix, viewportMatrix,
-              WHITE);
+    // drawPlaeのカメラマトリックス
+    DrawPlane(plane, viewProjectionMatrix, viewportMatrix, RED);
 
-    DrawSphere(sphere, sphereWorldViewProjectionMatrix, viewportMatrix,
-               spherColor);
+    DrawGrid(viewProjectionMatrix, viewportMatrix);
 
+    DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, sphereColor);
     ///
     /// ↑描画処理ここまで
     ///
