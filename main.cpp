@@ -2,7 +2,7 @@
 #include <cmath>
 #include <imgui.h>
 
-const char kWindowTitle[] = "LE2C_14_シミズグチ_ハル";
+const char kWindowTitle[] = "LE2C_25_フジイ_コハク";
 
 struct Vector3 {
   float x, y, z;
