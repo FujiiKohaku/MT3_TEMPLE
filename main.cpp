@@ -215,14 +215,16 @@ Vector3 Perpendicular(const Vector3 &vector) {
   return {0.0f, -vector.z, vector.y};
 }
 
-bool IsCollision(const Spheres &sphere, const Plane &plane) {
-  // 平面と球の中心との距離
-  float distance = sphere.center.x * plane.normal.x +
-                   sphere.center.y * plane.normal.y +
-                   sphere.center.z * plane.normal.z - plane.distance;
+//bool IsCollision(const Spheres &sphere, const Plane &plane) {
+//  // 平面と球の中心との距離
+//  float distance = sphere.center.x * plane.normal.x +
+//                   sphere.center.y * plane.normal.y +
+//                   sphere.center.z * plane.normal.z - plane.distance;
+//
+//  return std::fabs(distance) <= sphere.radius;
+//}
 
-  return std::fabs(distance) <= sphere.radius;
-}
+bool IsCollisiton(const);
 
 void DrawPlane(const Plane &plane, const Matrix4x4 &viewProjectionMatrix,
                const Matrix4x4 &viewportMatrix, uint32_t color) {
