@@ -23,6 +23,9 @@ struct Plane {
   float distance; //!< 距離
 };
 
+struct Triangle {
+  Vector3 vertices[3]; // 頂点
+};
 // ベクトルを変換
 Vector3 Transform(const Vector3 &v, const Matrix4x4 &m) {
   float x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
@@ -215,16 +218,19 @@ Vector3 Perpendicular(const Vector3 &vector) {
   return {0.0f, -vector.z, vector.y};
 }
 
-//bool IsCollision(const Spheres &sphere, const Plane &plane) {
-//  // 平面と球の中心との距離
-//  float distance = sphere.center.x * plane.normal.x +
-//                   sphere.center.y * plane.normal.y +
-//                   sphere.center.z * plane.normal.z - plane.distance;
+// bool IsCollision(const Spheres &sphere, const Plane &plane) {
+//   // 平面と球の中心との距離
+//   float distance = sphere.center.x * plane.normal.x +
+//                    sphere.center.y * plane.normal.y +
+//                    sphere.center.z * plane.normal.z - plane.distance;
 //
-//  return std::fabs(distance) <= sphere.radius;
-//}
+//   return std::fabs(distance) <= sphere.radius;
+// }
 
-bool IsCollisiton(const);
+bool IsCollision(const Triangle& triangle, const Segment ) {
+  // 各辺を結んだベクトルと頂点と衝突店ｐを結んだベクトルのクロス積を取る
+  Vector3 cross01 = Cross()
+}
 
 void DrawPlane(const Plane &plane, const Matrix4x4 &viewProjectionMatrix,
                const Matrix4x4 &viewportMatrix, uint32_t color) {
@@ -319,10 +325,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       isRightDragging = false;
     }
 
-    
-
-        // パース付き射影行列
-        float fovY = 0.5f;
+    // パース付き射影行列
+    float fovY = 0.5f;
     float aspect = 1280.0f / 720.0f;
     float nearZ = 0.1f;
     float farZ = 100.0f;
@@ -355,7 +359,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Novice::EndFrame();
 
     if (preKeys[DIK_ESCAPE] == 0 && keys[DIK_ESCAPE] != 0) {
-      
+
       break;
     }
   }
