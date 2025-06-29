@@ -43,6 +43,10 @@ enum class LineType {
   Segment   // 線分
 };
 
+struct AABB {
+  Vector3 min;
+  Vector3 max;
+};
 struct Triangle {
   Vector3 vertices[3]; // 頂点
 };
@@ -475,162 +479,50 @@ void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
                      int(endScreen.y), color);
   }
 }
-// 入力されたベクトルに対してそれと垂直になるようなベクトルを返している。
-Vector3 Perpendicular(const Vector3 &vector) {
-  if (vector.x != 0.0f || vector.y != 0.0f) {
 
-    return {-vector.y, vector.x, 0.0f};
-  }
-  return {0.0f, -vector.z, vector.y};
-}
 
-void DrawPlane(const Plane &plane, const Matrix4x4 &vieprojectionMatrix,
-               const Matrix4x4 &viewportMatrix, uint32_t color) {
-  // 平面上の点を求めるすでに分かっているdistanceとnormal法線を利用する
-  Vector3 center = Multiply(plane.distance, plane.normal); // 1
-  // 垂直方向のベクトル(例：平面上に広がる4つの点)を保持する配列
-  Vector3 perpendiculars[4];
-  // plane.normalに垂直なベクトルを返してNormalizeで正規化したものを0番目の配列に格納
-  // なんか平面の向きが決まるらしいね
-  perpendiculars[0] = Nomalize(Perpendicular(plane.normal)); // 2
-  // 逆ベクトルを求めます(perpendiculars[0]の)
-  // 逆ベクトルを求めることによって平面の中心から両側に広がる形を作れる
-  perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y,
-                       -perpendiculars[0].z}; // 3
-  // 平面の法線と、すでにある垂直ベクトルとの外積で、平面上のもう1つの直交方向ベクトルを求めました
-  // 四角を作るため
-  perpendiculars[2] = Nomalize(Cross(plane.normal, perpendiculars[0])); // 4
-  /// ここまで法線を中心に縦横のベクトルを求めていた
-  // 縦方向ベクトルの逆を作って平面の中心から上下左右すべての方向に広がるようにするため
-  perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y,
-                       -perpendiculars[2].z};
 
-  Vector3 points[4];
 
-  for (int index = 0; index < 4; ++index) {
-    // 単位ベクトル(長さ=1)を2倍に伸ばしている
-    //  perpendiculars[]この配列の中どれが右とかない
-    //  だけど向いている方向が違うから四角形が作れる
-    Vector3 extend = Multiply(2.0f, perpendiculars[index]);
-    // 中心からある方向に伸ばした位置にある一点を計算している
-    Vector3 point = Add(center, extend);
-    points[index] =
-        Transform(Transform(point, vieprojectionMatrix), viewportMatrix);
-  }
-  // 線を引く
-  Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[1].x,
-                   (int)points[1].y, color); // top → right
-  Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[2].x,
-                   (int)points[2].y, color); // right → bottom
-  Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[0].x,
-                   (int)points[0].y, color); // bottom → left
-  Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[3].x,
-                   (int)points[3].y, color); // left → top
-}
-// 三角形描画関数
-void DrawTriangle(const Triangle &triangle,
-                  const Matrix4x4 &worldViewProjectionMatrix,
-                  const Matrix4x4 &viewportMatrix, uint32_t color) {
-  Vector3 screenVertices[3];
+//------------------------
+// AABB
+//------------------------
+void DrawAABB(const AABB &aabb, const Matrix4x4 &viewProjectionMatrix,
+              const Matrix4x4 &viewportMatrix, uint32_t color) {
+  // 1. min/max を使って、AABBの8つの頂点を作成
+  Vector3 vertices[8] = {
+      {aabb.min.x, aabb.min.y, aabb.min.z},
+      {aabb.max.x, aabb.min.y, aabb.min.z},
+      {aabb.min.x, aabb.max.y, aabb.min.z},
+      {aabb.max.x, aabb.max.y, aabb.min.z},
+      {aabb.min.x, aabb.min.y, aabb.max.z},
+      {aabb.max.x, aabb.min.y, aabb.max.z},
+      {aabb.min.x, aabb.max.y, aabb.max.z},
+      {aabb.max.x, aabb.max.y, aabb.max.z},
+  };
 
-  for (int i = 0; i < 3; ++i) {
-    // カメラ・投影（ワールド→カメラ→NDC）
-    Vector3 v = Transform(triangle.vertices[i], worldViewProjectionMatrix);
-
-    // ビューポート変換（NDC→スクリーン）
-    v = Transform(v, viewportMatrix);
-
-    screenVertices[i] = v;
+  // 2. 各頂点を viewProjection → viewport で変換
+  Vector3 screenVertices[8];
+  for (int i = 0; i < 8; i++) {
+    Vector3 ndc = Transform(vertices[i], viewProjectionMatrix);
+    screenVertices[i] = Transform(ndc, viewportMatrix);
   }
 
-  // 画面上に描画（整数座標に変換）
-  Novice::DrawTriangle(static_cast<int>(screenVertices[0].x),
-                       static_cast<int>(screenVertices[0].y),
-                       static_cast<int>(screenVertices[1].x),
-                       static_cast<int>(screenVertices[1].y),
-                       static_cast<int>(screenVertices[2].x),
-                       static_cast<int>(screenVertices[2].y), color,
-                       kFillModeWireFrame);
+  // 3. 8頂点を辺で結ぶ（12本）線を描く
+  int edges[12][2] = {
+      {0, 1}, {1, 3}, {3, 2}, {2, 0}, // 底面
+      {4, 5}, {5, 7}, {7, 6}, {6, 4}, // 上面
+      {0, 4}, {1, 5}, {2, 6}, {3, 7}  // 側面
+  };
+
+  for (int i = 0; i < 12; i++) {
+    Vector3 p0 = screenVertices[edges[i][0]];
+    Vector3 p1 = screenVertices[edges[i][1]];
+    Novice::DrawLine(int(p0.x), int(p0.y), int(p1.x), int(p1.y), color);
+  }
 }
 
 #pragma endregion
 
-//bool IsCollision(const Vector3 &origin, const Vector3 &diff,
-                 const Plane &plane) {
-
-  // 平面の法線と線の方向ベクトルの内積
-  float dot = plane.normal.x * diff.x + plane.normal.y * diff.y +
-              plane.normal.z * diff.z;
-
-  // 線と平面が平行なら交差しない（内積0）
-  if (dot == 0.0f) {
-    return false;
-  }
-
-  // 交点の媒介変数tを求める
-  float t =
-      (plane.distance - (origin.x * plane.normal.x + origin.y * plane.normal.y +
-                         origin.z * plane.normal.z)) /
-      dot;
-  return (t >= 0.0f && t <= 1.0f);
-}
-// 三角形と線の当たり判定
-bool isCollisionTriangle(const Triangle &triangle, const Segment &segment) {
-  Vector3 origin = segment.origin;
-  Vector3 diff = segment.diff;
-
-  Vector3 edge1 = Subtract(triangle.vertices[1], triangle.vertices[0]);
-  Vector3 edge2 = Subtract(triangle.vertices[2], triangle.vertices[0]);
-  Vector3 normal = Cross(edge1, edge2);
-
-  float distance = Dot(normal, triangle.vertices[0]);
-
-  // 平面の法線と線の方向ベクトルの内積
-  float dot = normal.x * diff.x + normal.y * diff.y + normal.z * diff.z;
-  // 線と平面が平行なら交差しない（内積0）
-  if (dot == 0.0f) {
-    return false;
-  }
-
-  // 交点の媒介変数tを求める
-  float t = (distance - (origin.x * normal.x + origin.y * normal.y +
-                         origin.z * normal.z)) /
-            dot;
-
-  // tが線分上にあるかチェック
-  if (t < 0.0f || t > 1.0f) {
-    return false;
-  }
-
-  // 交点pを計算
-  Vector3 p;
-  p.x = origin.x + diff.x * t;
-  p.y = origin.y + diff.y * t;
-  p.z = origin.z + diff.z * t;
-
-  // 三角形の辺ベクトル
-  Vector3 edge01 = Subtract(triangle.vertices[1], triangle.vertices[0]);
-  Vector3 edge12 = Subtract(triangle.vertices[2], triangle.vertices[1]);
-  Vector3 edge20 = Subtract(triangle.vertices[0], triangle.vertices[2]);
-
-  // 交点pと各頂点を結ぶベクトル
-  Vector3 c0 = Subtract(p, triangle.vertices[0]);
-  Vector3 c1 = Subtract(p, triangle.vertices[1]);
-  Vector3 c2 = Subtract(p, triangle.vertices[2]);
-
-  // クロス積を計算
-  Vector3 cross01 = Cross(edge01, c0);
-  Vector3 cross12 = Cross(edge12, c1);
-  Vector3 cross20 = Cross(edge20, c2);
-
-  // クロス積の向きを比較（内積）
-  if (Dot(cross01, normal) >= 0.0f && Dot(cross12, normal) >= 0.0f &&
-      Dot(cross20, normal) >= 0.0f) {
-    return true;
-  }
-
-  return false; // 衝突なし
-}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -649,13 +541,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
   int kWindowWidth = 1280;
   int kWindowHeight = 720;
-  static Plane plane = {{0.0f, 1.0f, 0.0f}, 0.0f};
-  static Segment segment = {{0.0f, 1.0f, -1.0f}, {0.0f, -2.0f, 2.0f}};
-  static Triangle triangle = {{
-      {-0.5f, -0.5f, 2.0f}, // 左下
-      {0.5f, -0.5f, 2.0f},  // 右下
-      {0.0f, 0.5f, 2.0f}    // 上
-  }};
+  
+  AABB aabb1{
+      .min{-0.5f, -0.5f, -0.5f},
+      .max{0.0f, 0.0f, 0.0f},
+  };
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
     // フレームの開始
@@ -668,7 +558,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓更新処理ここから
     ///
-    plane.normal = Nomalize(plane.normal);
+   
     // スケール × 回転 × 平行移動 = カメラの世界行列（位置と向き）
     Matrix4x4 cameraMatrix =
         MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
@@ -684,44 +574,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Matrix4x4 WorldViewProjectionMatrix =
         Multiply(viewMatrix, projectionMatrix);
 
-    // 線
-    Matrix4x4 worldMatrix =
-        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translate);
-    Matrix4x4 LineViewProjectionMatrix =
-        Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
-    Vector3 start = Transform(
-        Transform(segment.origin, LineViewProjectionMatrix), viewportMatrix);
-    Vector3 end = Transform(
-        Transform(Add(segment.origin, segment.diff), LineViewProjectionMatrix),
-        viewportMatrix);
-
-    // int hit = IsCollision(segment.origin, segment.diff, plane);
-
-    int hitTriangle = isCollisionTriangle(triangle, segment);
-    if (hitTriangle) {
-      color = RED;
-
-    } else {
-      color = WHITE;
-    }
+ 
+  
     ImGui::Begin("Control Panel");
-
-    // Planeの法線ベクトル（正規化された値なので単位ベクトルに注意）
-    ImGui::Text("Plane");
-    ImGui::DragFloat3("Plane Normal", &plane.normal.x, 0.01f, -1.0f, 1.0f);
-    ImGui::DragFloat("Plane Distance", &plane.distance, 0.01f, -10.0f, 10.0f);
-
     // Segmentの始点と終点方向
     ImGui::Separator();
-    ImGui::Text("Segment");
-    ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f, -10.0f,
-                      10.0f);
-    ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f, -10.0f, 10.0f);
-    ImGui::Separator();
-    ImGui::Text("Triangle");
-    ImGui::DragFloat3("Vertex 0", &triangle.vertices[0].x, 0.01f);
-    ImGui::DragFloat3("Vertex 1", &triangle.vertices[1].x, 0.01f);
-    ImGui::DragFloat3("Vertex 2", &triangle.vertices[2].x, 0.01f);
+   
     ImGui::Text("Camera");
     ImGui::DragFloat3("cameraX", &cameraRotate.x, 0.01f);
     ImGui::DragFloat3("cameraTransLate", &cameraTransLate.x, 0.01f);
@@ -732,12 +590,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓描画処理ここから
     ///
-    DrawPlane(plane, WorldViewProjectionMatrix, viewportMatrix, RED);
-    Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
+   
+   // Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
     DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
+    DrawAABB(aabb1, WorldViewProjectionMatrix, viewportMatrix, color);
     // 三角形
     // viewportMatirixにviewportが入っていてうまく描画できなかったので注意
-    DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
+   // DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
     ///
     /// ↑描画処理ここまで
     ///
