@@ -555,7 +555,7 @@ void DrawTriangle(const Triangle &triangle,
 
 #pragma endregion
 
-bool IsCollision(const Vector3 &origin, const Vector3 &diff,
+//bool IsCollision(const Vector3 &origin, const Vector3 &diff,
                  const Plane &plane) {
 
   // 平面の法線と線の方向ベクトルの内積
