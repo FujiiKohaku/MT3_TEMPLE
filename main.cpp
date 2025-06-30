@@ -480,9 +480,6 @@ void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
   }
 }
 
-
-
-
 //------------------------
 // AABB
 //------------------------
@@ -521,8 +518,22 @@ void DrawAABB(const AABB &aabb, const Matrix4x4 &viewProjectionMatrix,
   }
 }
 
+bool isCollision(const AABB &aabb1, const AABB &aabb2) {
+  return (aabb1.min.x <= aabb2.max.x && aabb1.max.x >= aabb2.min.x) &&
+         (aabb1.min.y <= aabb2.max.y && aabb1.max.y >= aabb2.min.y) &&
+         (aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z);
+}
+void NormalizeAABB(AABB &aabb) {
+  float minX = std::fmin(aabb.min.x, aabb.max.x);
+  float maxX = std::fmax(aabb.min.x, aabb.max.x);
+  float minY = std::fmin(aabb.min.y, aabb.max.y);
+  float maxY = std::fmax(aabb.min.y, aabb.max.y);
+  float minZ = std::fmin(aabb.min.z, aabb.max.z);
+  float maxZ = std::fmax(aabb.min.z, aabb.max.z);
+  aabb.min = {minX, minY, minZ};
+  aabb.max = {maxX, maxY, maxZ};
+}
 #pragma endregion
-
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -541,11 +552,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
   int kWindowWidth = 1280;
   int kWindowHeight = 720;
-  
+
   AABB aabb1{
       .min{-0.5f, -0.5f, -0.5f},
       .max{0.0f, 0.0f, 0.0f},
   };
+  AABB aabb2{
+      .min{0.2f, 0.2f, 0.2f},
+      .max{1.0f, 1.0f, 1.0f},
+  };
+
+  // 一回でいいらしいな
+  aabb1.min.x = std::fmin(aabb1.min.x, aabb1.max.x);
+  aabb1.max.x = std::fmax(aabb1.min.x, aabb1.max.x);
+
+  aabb1.min.y = std::fmin(aabb1.min.y, aabb1.max.y);
+  aabb1.max.y = std::fmax(aabb1.min.y, aabb1.max.y);
+
+  aabb1.min.z = std::fmin(aabb1.min.z, aabb1.max.z);
+  aabb1.max.z = std::fmax(aabb1.min.z, aabb1.max.z);
+  int isHit;
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
     // フレームの開始
@@ -558,7 +584,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓更新処理ここから
     ///
-   
+
     // スケール × 回転 × 平行移動 = カメラの世界行列（位置と向き）
     Matrix4x4 cameraMatrix =
         MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTransLate);
@@ -574,29 +600,48 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Matrix4x4 WorldViewProjectionMatrix =
         Multiply(viewMatrix, projectionMatrix);
 
- 
-  
-    ImGui::Begin("Control Panel");
-    // Segmentの始点と終点方向
+ImGui::Begin("Control Panel");
+
     ImGui::Separator();
-   
     ImGui::Text("Camera");
     ImGui::DragFloat3("cameraX", &cameraRotate.x, 0.01f);
     ImGui::DragFloat3("cameraTransLate", &cameraTransLate.x, 0.01f);
+
+    ImGui::Separator();
+    ImGui::Text("AABB1");
+    ImGui::DragFloat3("AABB1 Min", &aabb1.min.x, 0.01f);
+    ImGui::DragFloat3("AABB1 Max", &aabb1.max.x, 0.01f);
+
+    ImGui::Text("AABB2");
+    ImGui::DragFloat3("AABB2 Min", &aabb2.min.x, 0.01f);
+    ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
+
     ImGui::End();
+
+    NormalizeAABB(aabb1);
+    NormalizeAABB(aabb2);
+    isHit = isCollision(aabb1, aabb2);
+
+    if (isHit) {
+      color = RED;
+    } else {
+      color = WHITE;
+    }
     /// ↑更新処理ここまで
     ///
 
     ///
     /// ↓描画処理ここから
     ///
-   
-   // Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
+
+    // Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y),
+    // WHITE);
     DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
     DrawAABB(aabb1, WorldViewProjectionMatrix, viewportMatrix, color);
+    DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
     // 三角形
     // viewportMatirixにviewportが入っていてうまく描画できなかったので注意
-   // DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
+    // DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
     ///
     /// ↑描画処理ここまで
     ///
