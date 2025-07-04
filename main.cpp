@@ -562,6 +562,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       .max{1.0f, 1.0f, 1.0f},
   };
 
+  Sphere sphere{
+      .center{0.0f, 0.0f, 0.0f},
+      .radius{1.0f},
+  };
+
   // 一回でいいらしいな
   aabb1.min.x = std::fmin(aabb1.min.x, aabb1.max.x);
   aabb1.max.x = std::fmax(aabb1.min.x, aabb1.max.x);
@@ -572,6 +577,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   aabb1.min.z = std::fmin(aabb1.min.z, aabb1.max.z);
   aabb1.max.z = std::fmax(aabb1.min.z, aabb1.max.z);
   int isHit;
+
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
     // フレームの開始
@@ -639,6 +645,7 @@ ImGui::Begin("Control Panel");
     DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
     DrawAABB(aabb1, WorldViewProjectionMatrix, viewportMatrix, color);
     DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
+    DrawSphere()
     // 三角形
     // viewportMatirixにviewportが入っていてうまく描画できなかったので注意
     // DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
