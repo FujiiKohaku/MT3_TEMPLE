@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include <Novice.h>
+#include <algorithm>
 #include <assert.h>
 #include <cmath>
 #include <imgui.h>
@@ -513,10 +514,28 @@ void DrawAABB(const AABB &aabb, const Matrix4x4 &viewProjectionMatrix,
   }
 }
 
-bool isCollision(const AABB &aabb1, const AABB &aabb2) {
-  return (aabb1.min.x <= aabb2.max.x && aabb1.max.x >= aabb2.min.x) &&
-         (aabb1.min.y <= aabb2.max.y && aabb1.max.y >= aabb2.min.y) &&
-         (aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z);
+// bool isCollision(const AABB &aabb1, const AABB &aabb2) {
+//   return (aabb1.min.x <= aabb2.max.x && aabb1.max.x >= aabb2.min.x) &&
+//          (aabb1.min.y <= aabb2.max.y && aabb1.max.y >= aabb2.min.y) &&
+//          (aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z);
+// }
+// 衝突判定関数
+bool isCollision(const AABB &aabb, const Sphere &sphere) {
+  // 球の中心とAABBの最近接点を求める
+  Vector3 closestPoint = {
+      std::clamp(sphere.center.x, aabb.min.x, aabb.max.x),
+      std::clamp(sphere.center.y, aabb.min.y, aabb.max.y),
+      std::clamp(sphere.center.z, aabb.min.z, aabb.max.z),
+  };
+
+  // 最近接点と球の中心との距離を求める
+  float distance = Length(Subtract(closestPoint, sphere.center));
+
+  // 距離が球の半径以下なら衝突
+  if (distance <= sphere.radius) {
+    return true; // 衝突している
+  }
+  return false; // 衝突していない
 }
 void NormalizeAABB(AABB &aabb) {
   float minX = std::fmin(aabb.min.x, aabb.max.x);
@@ -619,12 +638,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     ImGui::Text("Shpere");
     ImGui::DragFloat3("sphere", &sphere.center.x, 0.01f);
-   // ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
+    // ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
     ImGui::End();
 
     NormalizeAABB(aabb1);
     NormalizeAABB(aabb2);
-    isHit = isCollision(aabb1, aabb2);
+    isHit = isCollision(aabb1, sphere);
 
     if (isHit) {
       color = RED;
@@ -643,7 +662,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // WHITE);
     DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
     DrawAABB(aabb1, WorldViewProjectionMatrix, viewportMatrix, color);
-    DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
+   // DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
     DrawSphere(sphere, WorldViewProjectionMatrix, viewportMatrix, WHITE);
     // 三角形
     // viewportMatirixにviewportが入っていてうまく描画できなかったので注意
