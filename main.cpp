@@ -365,12 +365,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // ADキーで左右移動
     if (keys[DIK_A]) {
       translate.x -= 0.1f; // 左に移動
-      rotate.y -= 0.1f;   // 左に回転
+    
     }
     if (keys[DIK_D]) {
       translate.x += 0.1f; // 右に移動
-      rotate.y += 0.1f;   // 右に回転
     }
+      rotate.y += 0.1f;   // 右に回転
 
  
 
