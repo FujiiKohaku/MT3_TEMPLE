@@ -388,21 +388,19 @@ Vector3 Nomalize(const Vector3 &v) // ok
 // 球体作成関数
 void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
                 const Matrix4x4 &viewportMatrix, uint32_t color) {
-  const uint32_t kSubdivision = 16; // 分割数（大きいほどなめらか）
-  const float kLonEvery =
-      2.0f * float(M_PI) / float(kSubdivision); // 経度の1つ分の角度
-  const float kLatEvery =
-      float(M_PI) / float(kSubdivision); // 緯度の1つ分の角度
+  const uint32_t kSubdivision = 16;
+  const float pi = 3.1415926535f;
+  const float kLatEvery = pi / kSubdivision;
+  const float kLonEvery = 2 * pi / kSubdivision;
 
   for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-    float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex; // 現在の緯度
-    float nextLat = lat + kLatEvery;                        // 次の緯度
+    float lat = -pi / 2.0f + kLatEvery * latIndex;
+    float nextLat = lat + kLatEvery;
 
     for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-      float lon = lonIndex * kLonEvery; // 現在の経度
-      float nextLon = lon + kLonEvery;  // 次の経度
+      float lon = lonIndex * kLonEvery;
+      float nextLon = lon + kLonEvery;
 
-      // 球面上の3点を求める
       Vector3 a = {sphere.center.x + sphere.radius * cosf(lat) * cosf(lon),
                    sphere.center.y + sphere.radius * sinf(lat),
                    sphere.center.z + sphere.radius * cosf(lat) * sinf(lon)};
@@ -413,7 +411,6 @@ void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
                    sphere.center.y + sphere.radius * sinf(lat),
                    sphere.center.z + sphere.radius * cosf(lat) * sinf(nextLon)};
 
-      // ワールド座標→スクリーン座標へ変換
       Vector3 screenA =
           Transform(Transform(a, viewProjectionMatrix), viewportMatrix);
       Vector3 screenB =
@@ -421,10 +418,8 @@ void DrawSphere(const Sphere &sphere, const Matrix4x4 &viewProjectionMatrix,
       Vector3 screenC =
           Transform(Transform(c, viewProjectionMatrix), viewportMatrix);
 
-      // abとacに線を引く
       Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenB.x),
                        int(screenB.y), color);
-
       Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenC.x),
                        int(screenC.y), color);
     }
@@ -606,7 +601,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Matrix4x4 WorldViewProjectionMatrix =
         Multiply(viewMatrix, projectionMatrix);
 
-ImGui::Begin("Control Panel");
+    ImGui::Begin("Control Panel");
 
     ImGui::Separator();
     ImGui::Text("Camera");
@@ -621,6 +616,10 @@ ImGui::Begin("Control Panel");
     ImGui::Text("AABB2");
     ImGui::DragFloat3("AABB2 Min", &aabb2.min.x, 0.01f);
     ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
+
+    ImGui::Text("Shpere");
+    ImGui::DragFloat3("sphere", &sphere.center.x, 0.01f);
+   // ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
     ImGui::End();
 
     NormalizeAABB(aabb1);
@@ -645,7 +644,7 @@ ImGui::Begin("Control Panel");
     DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
     DrawAABB(aabb1, WorldViewProjectionMatrix, viewportMatrix, color);
     DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
-    DrawSphere()
+    DrawSphere(sphere, WorldViewProjectionMatrix, viewportMatrix, WHITE);
     // 三角形
     // viewportMatirixにviewportが入っていてうまく描画できなかったので注意
     // DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
