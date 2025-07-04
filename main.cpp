@@ -615,7 +615,6 @@ ImGui::Begin("Control Panel");
     ImGui::Text("AABB2");
     ImGui::DragFloat3("AABB2 Min", &aabb2.min.x, 0.01f);
     ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
-
     ImGui::End();
 
     NormalizeAABB(aabb1);
@@ -627,6 +626,7 @@ ImGui::Begin("Control Panel");
     } else {
       color = WHITE;
     }
+
     /// ↑更新処理ここまで
     ///
 
