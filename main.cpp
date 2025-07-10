@@ -520,23 +520,81 @@ void DrawAABB(const AABB &aabb, const Matrix4x4 &viewProjectionMatrix,
 //          (aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z);
 // }
 // 衝突判定関数
-bool isCollision(const AABB &aabb, const Sphere &sphere) {
-  // 球の中心とAABBの最近接点を求める
-  Vector3 closestPoint = {
-      std::clamp(sphere.center.x, aabb.min.x, aabb.max.x),
-      std::clamp(sphere.center.y, aabb.min.y, aabb.max.y),
-      std::clamp(sphere.center.z, aabb.min.z, aabb.max.z),
-  };
+// bool isCollision(const AABB& aabb, const Sphere& sphere)
+//{
+//    // 球の中心とAABBの最近接点を求める
+//    Vector3 closestPoint = {
+//        std::clamp(sphere.center.x, aabb.min.x, aabb.max.x),
+//        std::clamp(sphere.center.y, aabb.min.y, aabb.max.y),
+//        std::clamp(sphere.center.z, aabb.min.z, aabb.max.z),
+//    };
+//
+//    // 最近接点と球の中心との距離を求める
+//    float distance = Length(Subtract(closestPoint, sphere.center));
+//
+//    // 距離が球の半径以下なら衝突
+//    if (distance <= sphere.radius) {
+//        return true; // 衝突している
+//    }
+//    return false; // 衝突していない
+//}
 
-  // 最近接点と球の中心との距離を求める
-  float distance = Length(Subtract(closestPoint, sphere.center));
+bool isCollision(const AABB &box, const Segment &seg) {
+  float tMin = 0.0f; // 今までで一番遅く AABB に入った時刻
+  float tMax = 1.0f; // 今までで一番早く AABB から出る時刻
 
-  // 距離が球の半径以下なら衝突
-  if (distance <= sphere.radius) {
-    return true; // 衝突している
+  // ----------------- X 軸 -----------------
+  if (seg.diff.x == 0.0f) {
+    if (seg.origin.x < box.min.x || seg.origin.x > box.max.x)
+      return false;
+  } else {
+    float tx1 = (box.min.x - seg.origin.x) / seg.diff.x;
+    float tx2 = (box.max.x - seg.origin.x) / seg.diff.x;
+    float tNearX = (tx1 < tx2) ? tx1 : tx2; // 小さいほうが near
+    float tFarX = (tx1 < tx2) ? tx2 : tx1;  // 大きいほうが far
+
+    tMin = (tNearX > tMin) ? tNearX : tMin; // max(tMin, tNearX)
+    tMax = (tFarX < tMax) ? tFarX : tMax;   // min(tMax, tFarX)
+    if (tMin > tMax)
+      return false;
   }
-  return false; // 衝突していない
+
+  // ----------------- Y 軸 -----------------
+  if (seg.diff.y == 0.0f) {
+    if (seg.origin.y < box.min.y || seg.origin.y > box.max.y)
+      return false;
+  } else {
+    float ty1 = (box.min.y - seg.origin.y) / seg.diff.y;
+    float ty2 = (box.max.y - seg.origin.y) / seg.diff.y;
+    float tNearY = (ty1 < ty2) ? ty1 : ty2;
+    float tFarY = (ty1 < ty2) ? ty2 : ty1;
+
+    tMin = (tNearY > tMin) ? tNearY : tMin;
+    tMax = (tFarY < tMax) ? tFarY : tMax;
+    if (tMin > tMax)
+      return false;
+  }
+
+  // ----------------- Z 軸 -----------------
+  if (seg.diff.z == 0.0f) {
+    if (seg.origin.z < box.min.z || seg.origin.z > box.max.z)
+      return false;
+  } else {
+    float tz1 = (box.min.z - seg.origin.z) / seg.diff.z;
+    float tz2 = (box.max.z - seg.origin.z) / seg.diff.z;
+    float tNearZ = (tz1 < tz2) ? tz1 : tz2;
+    float tFarZ = (tz1 < tz2) ? tz2 : tz1;
+
+    tMin = (tNearZ > tMin) ? tNearZ : tMin;
+    tMax = (tFarZ < tMax) ? tFarZ : tMax;
+    if (tMin > tMax)
+      return false;
+  }
+
+  // 3 軸すべてで区間が残っていれば衝突
+  return true;
 }
+
 void NormalizeAABB(AABB &aabb) {
   float minX = std::fmin(aabb.min.x, aabb.max.x);
   float maxX = std::fmax(aabb.min.x, aabb.max.x);
@@ -580,6 +638,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       .center{0.0f, 0.0f, 0.0f},
       .radius{1.0f},
   };
+  static Segment segment = {{0.0f, 1.0f, -1.0f}, {0.0f, -2.0f, 2.0f}};
 
   // 一回でいいらしいな
   aabb1.min.x = std::fmin(aabb1.min.x, aabb1.max.x);
@@ -620,6 +679,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     Matrix4x4 WorldViewProjectionMatrix =
         Multiply(viewMatrix, projectionMatrix);
 
+    //=========線===========//
+    Matrix4x4 worldMatrix =
+        MakeAffineMatrix({1.0f, 1.0f, 1.0f}, rotate, translate);
+    Matrix4x4 LineViewProjectionMatrix =
+        Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+    Vector3 start = Transform(
+        Transform(segment.origin, LineViewProjectionMatrix), viewportMatrix);
+    Vector3 end = Transform(
+        Transform(Add(segment.origin, segment.diff), LineViewProjectionMatrix),
+        viewportMatrix);
+    //=====================//
+
     ImGui::Begin("Control Panel");
 
     ImGui::Separator();
@@ -632,9 +703,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ImGui::DragFloat3("AABB1 Min", &aabb1.min.x, 0.01f);
     ImGui::DragFloat3("AABB1 Max", &aabb1.max.x, 0.01f);
 
-    ImGui::Text("AABB2");
-    ImGui::DragFloat3("AABB2 Min", &aabb2.min.x, 0.01f);
-    ImGui::DragFloat3("AABB2 Max", &aabb2.max.x, 0.01f);
+    ImGui::Separator();
+    ImGui::Text("Segment");
+    ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f, -10.0f,
+                      10.0f);
+    ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f, -10.0f, 10.0f);
 
     ImGui::Text("Shpere");
     ImGui::DragFloat3("sphere", &sphere.center.x, 0.01f);
@@ -643,7 +716,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     NormalizeAABB(aabb1);
     NormalizeAABB(aabb2);
-    isHit = isCollision(aabb1, sphere);
+    isHit = isCollision(aabb1, segment);
 
     if (isHit) {
       color = RED;
@@ -662,8 +735,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // WHITE);
     DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
     DrawAABB(aabb1, WorldViewProjectionMatrix, viewportMatrix, color);
-   // DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
-    DrawSphere(sphere, WorldViewProjectionMatrix, viewportMatrix, WHITE);
+    // DrawAABB(aabb2, WorldViewProjectionMatrix, viewportMatrix, color);
+    // DrawSphere(sphere, WorldViewProjectionMatrix, viewportMatrix, WHITE);
+
+    Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), color);
     // 三角形
     // viewportMatirixにviewportが入っていてうまく描画できなかったので注意
     // DrawTriangle(triangle, WorldViewProjectionMatrix, viewportMatrix, color);
