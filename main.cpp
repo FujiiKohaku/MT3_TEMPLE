@@ -48,11 +48,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓更新処理ここから
     ///
-    // マイフレーム初期化しないと動き続ける
-    moveX = 0;
-    moveY = 0;
-    newMoveX = 0;
-    newMoveY = 0;
+    moveX = 0.0f;    // 長さが0の場合は移動しない
+    moveY = 0.0f;    // 長さが0の場合は移動しない
+    newMoveX = 0.0f; // 長さが0の場合は移動しない
+    newMoveY = 0.0f; // 長さが0の場合は移動しない
     // プレイヤーの移動処理
     if (keys[DIK_W]) {
       moveY = -1.0f; // 上に移動
@@ -73,7 +72,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     if (length != 0.0f) {
       newMoveX = moveX / length; // 正規化
       newMoveY = moveY / length; // 正規化
-    }
+    } 
 
     posX += newMoveX * speed; // 新しい位置に移動
     posY += newMoveY * speed; // 新しい位置に移動
