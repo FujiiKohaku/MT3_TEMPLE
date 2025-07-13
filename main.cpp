@@ -15,17 +15,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
   //==定義==//
   // プレイヤーの位置
-  int posX;
-  int posY;
+  float posX;
+  float posY;
   // プレイヤー縦横幅
-  int width = 64;
-  int height = 64;
+
+  int radius = 32; // 楕円の半径
   // プレイヤーの速度
-  int speed;
+  float speed;
+  float length;
   //==初期化==//
   posX = 640; // ウィンドウの中心に配置
   posY = 360; // ウィンドウの中心に配置
   speed = 5;  // プレイヤーの移動速度
+  length = 0; // プレイヤーの移動距離
+  //==ベクトル==//
+  float moveX = 0;    // プレイヤーの移動方向X
+  float moveY = 0;    // プレイヤーの移動方向Y
+  float newMoveX = 0; // プレイヤーの新しい移動方向X
+  float newMoveY = 0; // プレイヤーの新しい移動方向Y
+
   //==初期化ここまで==//
 
   // ウィンドウの×ボタンが押されるまでループ
@@ -40,18 +48,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓更新処理ここから
     ///
-
+    // マイフレーム初期化しないと動き続ける
+    moveX = 0;
+    moveY = 0;
+    newMoveX = 0;
+    newMoveY = 0;
     // プレイヤーの移動処理
-    posX += speed;
-    // 右壁に衝突したときの処理
-    if (posX >= 1280 - width) {
-      speed *= -1; // 速度を反転
+    if (keys[DIK_W]) {
+      moveY = -1.0f; // 上に移動
     }
-    // 左壁に衝突したときの処理
-    if (posX <= 0) {
+    if (keys[DIK_A]) {
+      moveX = -1.0f; // 左に移動
+    }
+    if (keys[DIK_S]) {
+      moveY = 1.0f; // 下に移動
+    }
+    if (keys[DIK_D]) {
+      moveX = 1.0f; // 右に移動
+    }
 
-      speed *= -1; // 速度を反転
+    // 移動ベクトルの長さ（距離）
+    length = sqrtf(moveX * moveX + moveY * moveY);
+
+    if (length != 0.0f) {
+      newMoveX = moveX / length; // 正規化
+      newMoveY = moveY / length; // 正規化
     }
+
+    posX += newMoveX * speed; // 新しい位置に移動
+    posY += newMoveY * speed; // 新しい位置に移動
 
     ///
     /// ↑更新処理ここまで
@@ -60,7 +85,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ///
     /// ↓描画処理ここから
     ///
-    Novice::DrawBox(posX, posY, width, height, 0.0f, WHITE, kFillModeSolid);
+    Novice::DrawEllipse(static_cast<int>(posX), static_cast<int>(posY), radius,
+                        radius, 0.0f, WHITE, kFillModeSolid);
     ///
     /// ↑描画処理ここまで
     ///
