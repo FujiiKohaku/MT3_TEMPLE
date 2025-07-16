@@ -263,14 +263,11 @@ void DrawPlane(const Plane &plane, const Matrix4x4 &viewProjectionMatrix,
   }
 }
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {a
   Novice::Initialize(kWindowTitle, 1280, 720);
   char keys[256] = {0};
   char preKeys[256] = {0};
 
-  int mouseX = 0, mouseY = 0;
-  int preMouseX = 0, preMouseY = 0;
-  bool isRightDragging = false;
 
   static Plane plane = {{0.0f, 1.0f, 0.0f}, 0.0f};
   while (Novice::ProcessMessage() == 0) {
@@ -290,7 +287,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     memcpy(preKeys, keys, 256);
     Novice::GetHitKeyStateAll(keys);
-
+    //法線の正規化
     plane.normal = Normalize(plane.normal);
 
     Matrix4x4 rotateMatrix = MakeRotateMatrix(cameraRotate);
@@ -302,25 +299,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     Matrix4x4 viewMatrix = MakeViewMatrix(cameraTranslate, target, up);
 
-    preMouseX = mouseX;
-    preMouseY = mouseY;
-    Novice::GetMousePosition(&mouseX, &mouseY);
 
-    if (Novice::IsPressMouse(1)) {
-      if (!isRightDragging) {
-        isRightDragging = true;
-      } else {
-        cameraRotate.y += (mouseX - preMouseX) * 0.01f;
-        cameraRotate.x += (mouseY - preMouseY) * 0.01f;
-      }
-    } else {
-      isRightDragging = false;
-    }
+
 
     
 
-        // パース付き射影行列
-        float fovY = 0.5f;
+     // パース付き射影行列
+    float fovY = 0.5f;
     float aspect = 1280.0f / 720.0f;
     float nearZ = 0.1f;
     float farZ = 100.0f;
