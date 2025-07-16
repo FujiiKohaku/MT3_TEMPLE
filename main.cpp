@@ -465,6 +465,17 @@ void DrawGrid(const Matrix4x4 &viewProjectionMatrix,
                      int(endScreen.y), color);
   }
 }
+bool IsCollidin(const Sphere &s1, const Sphere &s2) {
+  // 2つの球体の中心間の距離を計算
+  float distance = Length(Subtract(s1.center, s2.center));
+
+  // 半径の合計よりも短ければ衝突している
+  if (distance <= s1.radius + s2.radius) {
+    return true; // 衝突している
+  } else {
+    return false; // 衝突していない
+  }
+}
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   // ライブラリの初期化
@@ -492,6 +503,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   int sphereColor = WHITE;
   // 球の生存フラグ
   int sphereIsAlive = true;
+
+
   // ウィンドウの×ボタンが押されるまでループ
   while (Novice::ProcessMessage() == 0) {
     // フレームの開始
@@ -543,14 +556,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
       sphere1.center.x += 0.1f;
       sphere2.center.x -= 0.1f;
     }
-    // または、単純に viewMatrix * projectionMatrix だけでもいい
-    float distance = Length(Subtract(sphere1.center, sphere2.center));
-    // 半径の合計よりも短ければ衝突
-    if (distance <= sphere1.radius + sphere2.radius) {
-      sphereIsAlive = false;
-    } else {
-      sphereIsAlive = true;
-    }
+    IsCollidin(sphere1, sphere2);
+
     if (!sphereIsAlive) {
       sphereColor = RED;
     } else {
