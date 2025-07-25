@@ -441,7 +441,11 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix,
             int(endScreen.y), color);
     }
 }
-
+Vector3 operator+(const Vector3& v1, const Vector3& v2) { return Add(v1, v2); }
+Vector3 operator-(const Vector3& v1, const Vector3& v2) { return Subtract(v1, v2); }
+Vector3 operator*(float s, const Vector3& v) { return Multiply(s, v); }
+Vector3 operator*(const Vector3& v, float s) { return s * v; }
+Matrix4x4 operator*(const Matrix4x4 m1, const Matrix4x4& m2) { return Multiply(m1, m2); }
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 
@@ -459,24 +463,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     Vector3 cameraRotate { 0.26f, 0.0f, 0.0f };
     int kWindowWidth = 1280;
     int kWindowHeight = 720;
-
-    Vector3 translates[3] = {
-        { 0.2f, 1.0f, 0.0f }, // 肩の位置
-        { 0.4f, 0.0f, 0.0f }, // 肘の位置（肩からの相対）
-        { 0.3f, 0.0f, 0.0f }, // 手首の位置（肘からの相対）
-    };
-
-    Vector3 rotates[3] = {
-        { 0.0f, 0.0f, -6.8f },
-        { 0.0f, 0.0f, -1.4f },
-        { 0.0f, 0.0f, 0.0f },
-    };
-
-    Vector3 scales[3] = {
-        { 1.0f, 1.0f, 1.0f },
-        { 1.0f, 1.0f, 1.0f },
-        { 1.0f, 1.0f, 1.0f },
-    };
 
     // ウィンドウの×ボタンが押されるまでループ
     while (Novice::ProcessMessage() == 0) {
@@ -504,60 +490,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         Matrix4x4 WorldViewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 #pragma endregion
 
-        // ローカルマトリックスを作る（S * R * T）
-        Matrix4x4 shoulderLocal = MakeAffineMatrix(scales[0], rotates[0], translates[0]);
-        Matrix4x4 elbowLocal = MakeAffineMatrix(scales[1], rotates[1], translates[1]);
-        Matrix4x4 wristLocal = MakeAffineMatrix(scales[2], rotates[2], translates[2]);
+        Vector3 a { 0.2f, 1.0f, 0.0f };
+        Vector3 b { 2.4f, 3.1f, 1.2f };
+        Vector3 c = a + b;
+        Vector3 d = a - b;
+        Vector3 e = a * 2.4f;
 
-        // ワールド行列（親 → 子の順で掛け算）
-        Matrix4x4 shoulderWorld = shoulderLocal;
-        Matrix4x4 elbowWorld = Multiply(elbowLocal,shoulderWorld);
-        Matrix4x4 wristWorld = Multiply(wristLocal,elbowWorld);
+        Vector3 rotate1 { 0.4f, 1.43f, -0.8f };
 
+        Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate1.x);
+        Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate1.y);
+        Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate1.z);
 
-        Sphere sholderSphere = {};
-        sholderSphere.center = {
-            shoulderWorld.m[3][0], // x
-            shoulderWorld.m[3][1], // y
-            shoulderWorld.m[3][2] // z
-        };
-        sholderSphere.radius = 0.1f;
-
-        Sphere elbowSphere = {};
-        elbowSphere.center = {
-            elbowWorld.m[3][0],
-            elbowWorld.m[3][1],
-            elbowWorld.m[3][2],
-        };
-        elbowSphere.radius = 0.1f;
-
-        Sphere wristSphere = {};
-        wristSphere.center = {
-            wristWorld.m[3][0],
-            wristWorld.m[3][1],
-            wristWorld.m[3][2],
-        };
-
-        wristSphere.radius = 0.1f;
+        Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
 
         ImGui::Begin("Control Panel");
         ImGui::Separator();
         ImGui::Text("Camera");
         ImGui::DragFloat3("cameraX", &cameraRotate.x, 0.01f);
         ImGui::DragFloat3("cameraTransLate", &cameraTransLate.x, 0.01f);
+        ImGui::Begin("window");
 
-        // 回転
-        ImGui::Text("Rotation");
-        ImGui::DragFloat3("Shoulder Rotate", &rotates[0].x, 0.01f);
-        ImGui::DragFloat3("Elbow Rotate", &rotates[1].x, 0.01f);
-        ImGui::DragFloat3("Wrist Rotate", &rotates[2].x, 0.01f);
+        ImGui::Text("c:%f, %f, %f", c.x, c.y, c.z);
+        ImGui::Text("d:%f, %f, %f", d.x, d.y, d.z);
+        ImGui::Text("e:%f, %f, %f", e.x, e.y, e.z);
 
-        // 平行移動
-        ImGui::Separator();
-        ImGui::Text("Translation");
-        ImGui::DragFloat3("Shoulder Pos", &translates[0].x, 0.01f);
-        ImGui::DragFloat3("Elbow Pos", &translates[1].x, 0.01f);
-        ImGui::DragFloat3("Wrist Pos", &translates[2].x, 0.01f);
+        ImGui::Text(
+            "matrix:\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n",
+            rotateMatrix.m[0][0], rotateMatrix.m[0][1], rotateMatrix.m[0][2], rotateMatrix.m[0][3],
+            rotateMatrix.m[1][0], rotateMatrix.m[1][1], rotateMatrix.m[1][2], rotateMatrix.m[1][3],
+            rotateMatrix.m[2][0], rotateMatrix.m[2][1], rotateMatrix.m[2][2], rotateMatrix.m[2][3],
+            rotateMatrix.m[3][0], rotateMatrix.m[3][1], rotateMatrix.m[3][2], rotateMatrix.m[3][3]);
+
+        ImGui::End();
 
         ImGui::End();
 
@@ -567,25 +532,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         ///
         /// ↓描画処理ここから
         ///
-
-        DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
-        DrawSphere(sholderSphere, WorldViewProjectionMatrix, viewportMatrix, RED); // 赤
-        DrawSphere(elbowSphere, WorldViewProjectionMatrix, viewportMatrix, GREEN); // 緑
-        DrawSphere(wristSphere, WorldViewProjectionMatrix, viewportMatrix, BLUE); // 青
-
-        Vector3 shoulderScreen = Transform(Transform(sholderSphere.center, WorldViewProjectionMatrix), viewportMatrix);
-        Vector3 elbowScreen = Transform(Transform(elbowSphere.center, WorldViewProjectionMatrix), viewportMatrix);
-        Vector3 wristScreen = Transform(Transform(wristSphere.center, WorldViewProjectionMatrix), viewportMatrix);
-
-        // 線を描画
-        Novice::DrawLine(
-            (int)shoulderScreen.x, (int)shoulderScreen.y,
-            (int)elbowScreen.x, (int)elbowScreen.y,
-            WHITE);
-        Novice::DrawLine(
-            (int)elbowScreen.x, (int)elbowScreen.y,
-            (int)wristScreen.x, (int)wristScreen.y,
-            WHITE);
 
         /// ↑描画処理ここまで
         ///
