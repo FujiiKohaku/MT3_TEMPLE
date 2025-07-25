@@ -441,52 +441,6 @@ void DrawGrid(const Matrix4x4& viewProjectionMatrix,
             int(endScreen.y), color);
     }
 }
-// 線形補間関数（3D版）
-Vector3 Lerp(const Vector3& a, const Vector3& b, float t)
-{
-    return {
-        a.x * (1 - t) + b.x * t,
-        a.y * (1 - t) + b.y * t,
-        a.z * (1 - t) + b.z * t
-    };
-}
-
-// 2次ベジェ曲線上の点を計算
-Vector3 CalculateBezierPoint(const Vector3& p0, const Vector3& p1, const Vector3& p2, float t)
-{
-    Vector3 p0p1 = Lerp(p0, p1, t);
-    Vector3 p1p2 = Lerp(p1, p2, t);
-    return Lerp(p0p1, p1p2, t);
-}
-
-// ベジェ曲線を描く関数
-void DrawBezierCurve(const Vector3 controlPoints[3],
-    const Matrix4x4& viewProjectionMatrix,
-    const Matrix4x4& viewportMatrix,
-    uint32_t color,
-    int segments = 32)
-{
-    for (int i = 0; i < segments; ++i) {
-        float t0 = i / float(segments);
-        float t1 = (i + 1) / float(segments);
-
-        Vector3 bezier0 = CalculateBezierPoint(controlPoints[0], controlPoints[1], controlPoints[2], t0);
-        Vector3 bezier1 = CalculateBezierPoint(controlPoints[0], controlPoints[1], controlPoints[2], t1);
-
-        // ワールド座標→スクリーン座標に変換
-        Vector3 screen0 = Transform(bezier0, viewProjectionMatrix);
-        screen0 = Transform(screen0, viewportMatrix);
-
-        Vector3 screen1 = Transform(bezier1, viewProjectionMatrix);
-        screen1 = Transform(screen1, viewportMatrix);
-
-        // 線を描画
-        Novice::DrawLine(
-            static_cast<int>(screen0.x), static_cast<int>(screen0.y),
-            static_cast<int>(screen1.x), static_cast<int>(screen1.y),
-            color);
-    }
-}
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -506,16 +460,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     int kWindowWidth = 1280;
     int kWindowHeight = 720;
 
-    //==ベジエ曲線変数==//
-    Vector3 controlPoints[3] = {
-        { -0.8f, 0.58f, 1.0f },
-        { 1.76f, 1.0f, -0.3f },
-        { 0.94f, -0.7f, 2.7f },
-
+    Vector3 translates[3] = {
+        { 0.2f, 1.0f, 0.0f }, // 肩の位置
+        { 0.4f, 0.0f, 0.0f }, // 肘の位置（肩からの相対）
+        { 0.3f, 0.0f, 0.0f }, // 手首の位置（肘からの相対）
     };
-    Vector3 p0 = controlPoints[0];
-    Vector3 p1 = controlPoints[1];
-    Vector3 p2 = controlPoints[2];
+
+    Vector3 rotates[3] = {
+        { 0.0f, 0.0f, -6.8f },
+        { 0.0f, 0.0f, -1.4f },
+        { 0.0f, 0.0f, 0.0f },
+    };
+
+    Vector3 scales[3] = {
+        { 1.0f, 1.0f, 1.0f },
+        { 1.0f, 1.0f, 1.0f },
+        { 1.0f, 1.0f, 1.0f },
+    };
 
     // ウィンドウの×ボタンが押されるまでループ
     while (Novice::ProcessMessage() == 0) {
@@ -530,36 +491,73 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         /// ↓更新処理ここから
         ///
 
+#pragma region カメラ計算
         // スケール × 回転 × 平行移動 = カメラの世界行列（位置と向き）
         Matrix4x4 cameraMatrix = MakeAffineMatrix({ 1.0f, 1.0f, 1.0f }, cameraRotate, cameraTransLate);
         // 視点座標系に変換（カメラの逆変換）＝ビュー行列
         Matrix4x4 viewMatrix = Inverse(cameraMatrix);
         // 透視投影（遠近感を加える）
         // 透視投影行列の計算
-        Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
-            float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
+        Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(float(0.45), float(kWindowWidth) / float(kWindowHeight), 0.1f, 100.0f);
         // NDC（-1〜+1）を画面ピクセル座標に変換する
-        Matrix4x4 viewportMatrix = MakeViewportMatrix(
-            0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
+        Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWidth), float(kWindowHeight), 0.0f, 1.0f);
         Matrix4x4 WorldViewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
+#pragma endregion
+
+        // ローカルマトリックスを作る（S * R * T）
+        Matrix4x4 shoulderLocal = MakeAffineMatrix(scales[0], rotates[0], translates[0]);
+        Matrix4x4 elbowLocal = MakeAffineMatrix(scales[1], rotates[1], translates[1]);
+        Matrix4x4 wristLocal = MakeAffineMatrix(scales[2], rotates[2], translates[2]);
+
+        // ワールド行列（親 → 子の順で掛け算）
+        Matrix4x4 shoulderWorld = shoulderLocal;
+        Matrix4x4 elbowWorld = Multiply(elbowLocal,shoulderWorld);
+        Matrix4x4 wristWorld = Multiply(wristLocal,elbowWorld);
+
+
+        Sphere sholderSphere = {};
+        sholderSphere.center = {
+            shoulderWorld.m[3][0], // x
+            shoulderWorld.m[3][1], // y
+            shoulderWorld.m[3][2] // z
+        };
+        sholderSphere.radius = 0.1f;
+
+        Sphere elbowSphere = {};
+        elbowSphere.center = {
+            elbowWorld.m[3][0],
+            elbowWorld.m[3][1],
+            elbowWorld.m[3][2],
+        };
+        elbowSphere.radius = 0.1f;
+
+        Sphere wristSphere = {};
+        wristSphere.center = {
+            wristWorld.m[3][0],
+            wristWorld.m[3][1],
+            wristWorld.m[3][2],
+        };
+
+        wristSphere.radius = 0.1f;
 
         ImGui::Begin("Control Panel");
-
         ImGui::Separator();
         ImGui::Text("Camera");
         ImGui::DragFloat3("cameraX", &cameraRotate.x, 0.01f);
         ImGui::DragFloat3("cameraTransLate", &cameraTransLate.x, 0.01f);
 
-        ImGui::Begin("Bezier Control Points");
+        // 回転
+        ImGui::Text("Rotation");
+        ImGui::DragFloat3("Shoulder Rotate", &rotates[0].x, 0.01f);
+        ImGui::DragFloat3("Elbow Rotate", &rotates[1].x, 0.01f);
+        ImGui::DragFloat3("Wrist Rotate", &rotates[2].x, 0.01f);
 
-        ImGui::Begin("Bezier Control Points");
-
-        // controlPoints[0]
-        ImGui::DragFloat3("Control Point 0", &controlPoints[0].x, 0.01f);
-        // controlPoints[1]
-        ImGui::DragFloat3("Control Point 1", &controlPoints[1].x, 0.01f);
-        // controlPoints[2]
-        ImGui::DragFloat3("Control Point 2", &controlPoints[2].x, 0.01f);
+        // 平行移動
+        ImGui::Separator();
+        ImGui::Text("Translation");
+        ImGui::DragFloat3("Shoulder Pos", &translates[0].x, 0.01f);
+        ImGui::DragFloat3("Elbow Pos", &translates[1].x, 0.01f);
+        ImGui::DragFloat3("Wrist Pos", &translates[2].x, 0.01f);
 
         ImGui::End();
 
@@ -571,8 +569,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         ///
 
         DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
-        // ベジエの描画
-        DrawBezierCurve(controlPoints, WorldViewProjectionMatrix, viewportMatrix, WHITE);
+        DrawSphere(sholderSphere, WorldViewProjectionMatrix, viewportMatrix, RED); // 赤
+        DrawSphere(elbowSphere, WorldViewProjectionMatrix, viewportMatrix, GREEN); // 緑
+        DrawSphere(wristSphere, WorldViewProjectionMatrix, viewportMatrix, BLUE); // 青
+
+        Vector3 shoulderScreen = Transform(Transform(sholderSphere.center, WorldViewProjectionMatrix), viewportMatrix);
+        Vector3 elbowScreen = Transform(Transform(elbowSphere.center, WorldViewProjectionMatrix), viewportMatrix);
+        Vector3 wristScreen = Transform(Transform(wristSphere.center, WorldViewProjectionMatrix), viewportMatrix);
+
+        // 線を描画
+        Novice::DrawLine(
+            (int)shoulderScreen.x, (int)shoulderScreen.y,
+            (int)elbowScreen.x, (int)elbowScreen.y,
+            WHITE);
+        Novice::DrawLine(
+            (int)elbowScreen.x, (int)elbowScreen.y,
+            (int)wristScreen.x, (int)wristScreen.y,
+            WHITE);
+
         /// ↑描画処理ここまで
         ///
 
