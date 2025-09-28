@@ -505,26 +505,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
 
         ImGui::Begin("Control Panel");
-        ImGui::Separator();
-        ImGui::Text("Camera");
-        ImGui::DragFloat3("cameraX", &cameraRotate.x, 0.01f);
-        ImGui::DragFloat3("cameraTransLate", &cameraTransLate.x, 0.01f);
-        ImGui::Begin("window");
-
-        ImGui::Text("c:%f, %f, %f", c.x, c.y, c.z);
-        ImGui::Text("d:%f, %f, %f", d.x, d.y, d.z);
-        ImGui::Text("e:%f, %f, %f", e.x, e.y, e.z);
-
-        ImGui::Text(
-            "matrix:\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n",
-            rotateMatrix.m[0][0], rotateMatrix.m[0][1], rotateMatrix.m[0][2], rotateMatrix.m[0][3],
-            rotateMatrix.m[1][0], rotateMatrix.m[1][1], rotateMatrix.m[1][2], rotateMatrix.m[1][3],
-            rotateMatrix.m[2][0], rotateMatrix.m[2][1], rotateMatrix.m[2][2], rotateMatrix.m[2][3],
-            rotateMatrix.m[3][0], rotateMatrix.m[3][1], rotateMatrix.m[3][2], rotateMatrix.m[3][3]);
 
         ImGui::End();
 
-        ImGui::End();
 
         /// ↑更新処理ここまで
         ///
