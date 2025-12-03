@@ -7,7 +7,8 @@
 #include <math.h>
 #include <stdio.h>
 
-const char kWindowTitle[] = "LE2C_25_フジイ_コハク";
+const char kWindowTitle[] = "LE2B_21_フジイ_コハク";
+
 struct Vector3 { // ok
     float x, y, z;
 };
@@ -51,6 +52,8 @@ struct AABB {
 struct Triangle {
     Vector3 vertices[3]; // 頂点
 };
+
+
 #pragma region 関数
 // クロス積
 Vector3 Cross(const Vector3& v1, const Vector3& v2)
@@ -153,7 +156,7 @@ void MatrixScreenPrintf(const int x, const int y, const Matrix4x4& matirix,
     for (int row = 0; row < 4; ++row) {
         for (int column = 0; column < 4; ++column) {
             Novice::ScreenPrintf(x + column * kColumnWidth,
-                y + (row + 1) * kRowHeight, "%6.02f",
+                y + (row + 1) * kRowHeight, "%6.03f",
                 matirix.m[row][column]);
         }
     }
@@ -446,6 +449,48 @@ Vector3 operator-(const Vector3& v1, const Vector3& v2) { return Subtract(v1, v2
 Vector3 operator*(float s, const Vector3& v) { return Multiply(s, v); }
 Vector3 operator*(const Vector3& v, float s) { return s * v; }
 Matrix4x4 operator*(const Matrix4x4 m1, const Matrix4x4& m2) { return Multiply(m1, m2); }
+
+Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle)
+{
+    // 軸ベクトルを正規化
+    Vector3 n = Nomalize(axis);
+    float x = n.x;
+    float y = n.y;
+    float z = n.z;
+
+    float c = std::cos(angle);
+    float s = std::sin(angle);
+    float k = 1.0f - c;
+
+    Matrix4x4 result = {};
+
+    // ここが「行ベクトル用 R」の式
+    result.m[0][0] = x * x * k + c;
+    result.m[0][1] = x * y * k + z * s;
+    result.m[0][2] = x * z * k - y * s;
+    result.m[0][3] = 0.0f;
+
+    result.m[1][0] = x * y * k - z * s;
+    result.m[1][1] = y * y * k + c;
+    result.m[1][2] = y * z * k + x * s;
+    result.m[1][3] = 0.0f;
+
+    result.m[2][0] = x * z * k + y * s;
+    result.m[2][1] = y * z * k - x * s;
+    result.m[2][2] = z * z * k + c;
+    result.m[2][3] = 0.0f;
+
+    result.m[3][0] = 0.0f;
+    result.m[3][1] = 0.0f;
+    result.m[3][2] = 0.0f;
+    result.m[3][3] = 1.0f;
+
+    return result;
+}
+
+
+#pragma endregion
+
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 
@@ -490,7 +535,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         Matrix4x4 WorldViewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 #pragma endregion
 
-        Vector3 a { 0.2f, 1.0f, 0.0f };
+    /*    Vector3 a { 0.2f, 1.0f, 0.0f };
         Vector3 b { 2.4f, 3.1f, 1.2f };
         Vector3 c = a + b;
         Vector3 d = a - b;
@@ -502,15 +547,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate1.y);
         Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate1.z);
 
-        Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
+        Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;*/
 
         ImGui::Begin("Control Panel");
 
         ImGui::End();
 
-
         /// ↑更新処理ここまで
         ///
+
+        Vector3 axis = Nomalize({ 1.0f, 1.0f, 1.0f }); // 回転軸
+        float angle = 0.44f; // ラジアン角
+
+        Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
+
+        MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
 
         ///
         /// ↓描画処理ここから
