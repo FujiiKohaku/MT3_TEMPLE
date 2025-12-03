@@ -456,7 +456,7 @@ Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle)
     Vector3 n = Nomalize(axis);
     float x = n.x;
     float y = n.y;
-    float z = n.z;
+    float z = n.z; 
 
     float c = std::cos(angle);
     float s = std::sin(angle);
