@@ -53,7 +53,6 @@ struct Triangle {
     Vector3 vertices[3]; // 頂点
 };
 
-
 #pragma region 関数
 // クロス積
 Vector3 Cross(const Vector3& v1, const Vector3& v2)
@@ -149,18 +148,38 @@ Matrix4x4 MakeRotateZMatrix(const float radian)
 // 表示関数
 int kColumnWidth = 60;
 int kRowHeight = 20;
-void MatrixScreenPrintf(const int x, const int y, const Matrix4x4& matirix,
-    const char* label)
+
+void MatrixScreenPrintfRowMajor(int x, int y, const Matrix4x4& m, const char* label)
 {
     Novice::ScreenPrintf(x, y, "%s", label);
+
     for (int row = 0; row < 4; ++row) {
-        for (int column = 0; column < 4; ++column) {
-            Novice::ScreenPrintf(x + column * kColumnWidth,
-                y + (row + 1) * kRowHeight, "%6.03f",
-                matirix.m[row][column]);
+        for (int col = 0; col < 4; ++col) {
+            Novice::ScreenPrintf(
+                x + col * kColumnWidth,
+                y + (row + 1) * kRowHeight,
+                "%6.03f",
+                m.m[row][col]);
         }
     }
 }
+
+void MatrixScreenPrintfColumnMajor(int x, int y, const Matrix4x4& m, const char* label)
+{
+    Novice::ScreenPrintf(x, y, "%s", label);
+
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            Novice::ScreenPrintf(
+                x + col * kColumnWidth,
+                y + (row + 1) * kRowHeight,
+                "%6.03f",
+                m.m[col][row] // ← ここだけ逆！
+            );
+        }
+    }
+}
+
 // 行列の積
 Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
@@ -358,8 +377,7 @@ Vector3 Nomalize(const Vector3& v) // ok
 }
 
 // 球体作成関数
-void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix,
-    const Matrix4x4& viewportMatrix, uint32_t color)
+void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color)
 {
     const uint32_t kSubdivision = 16;
     const float pi = 3.1415926535f;
@@ -396,8 +414,7 @@ void DrawSphere(const Sphere& sphere, const Matrix4x4& viewProjectionMatrix,
     }
 }
 // Grid描画関数
-void DrawGrid(const Matrix4x4& viewProjectionMatrix,
-    const Matrix4x4& viewportMatrix)
+void DrawGrid(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix)
 {
     const float kGridHalfwidth = 2.0f; // グリッドの半分の幅
     const uint32_t kSubdivision = 10; // 分割数
@@ -456,7 +473,7 @@ Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle)
     Vector3 n = Nomalize(axis);
     float x = n.x;
     float y = n.y;
-    float z = n.z; 
+    float z = n.z;
 
     float c = std::cos(angle);
     float s = std::sin(angle);
@@ -488,6 +505,62 @@ Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle)
     return result;
 }
 
+// 01_02: ベクトル間の回転行列を求める
+Matrix4x4 DirectionToDirection(const Vector3& form, const Vector3& to)
+{
+    // 単位ベクトルに変換
+    Vector3 fromN = Nomalize(form); // フロムを正規化
+    Vector3 toN = Nomalize(to); // トゥを正規化
+
+    // コサイン値を求める
+    float cosTheta = Dot(fromN, toN);
+
+    //  同じ方向（回転なし）
+    if (cosTheta > 0.999f) {
+        return MakeIdentity4x4();
+    }
+    if (cosTheta < -0.999f) {
+
+        Vector3 axis;
+
+        // ux,uyのどちらかが非ゼロなら n = (uy, -ux, 0)
+        if (fabsf(fromN.x) > 1e-6f || fabsf(fromN.y) > 1e-6f) {
+            axis = Vector3 { fromN.y, -fromN.x, 0.0f };
+        } else {
+            // それ以外（ほぼX軸方向のとき）は n = (uz, 0, -ux)
+            axis = Vector3 { fromN.z, 0.0f, -fromN.x };
+        }
+
+        axis = Nomalize(axis);
+        return MakeRotateAxisAngle(axis, static_cast<float>(M_PI));
+    }
+
+    Vector3 n = Nomalize(Cross(fromN, toN));
+    float sinTheta = Length(Cross(fromN, toN));
+
+    // 変数にそれぞれ入れる
+    float x = n.x;
+    float y = n.y;
+    float z = n.z;
+    Matrix4x4 R;
+    R.m[0][0] = x * x * (1 - cosTheta) + cosTheta;
+    R.m[0][1] = x * y * (1 - cosTheta) - z * sinTheta;
+    R.m[0][2] = x * z * (1 - cosTheta) + y * sinTheta;
+    R.m[0][3] = 0.0f;
+    R.m[1][0] = y * x * (1 - cosTheta) + z * sinTheta;
+    R.m[1][1] = y * y * (1 - cosTheta) + cosTheta;
+    R.m[1][2] = y * z * (1 - cosTheta) - x * sinTheta;
+    R.m[1][3] = 0.0f;
+    R.m[2][0] = z * x * (1 - cosTheta) - y * sinTheta;
+    R.m[2][1] = z * y * (1 - cosTheta) + x * sinTheta;
+    R.m[2][2] = z * z * (1 - cosTheta) + cosTheta;
+    R.m[2][3] = 0.0f;
+    R.m[3][0] = 0.0f;
+    R.m[3][1] = 0.0f;
+    R.m[3][2] = 0.0f;
+    R.m[3][3] = 1.0f;
+    return R;
+}
 
 #pragma endregion
 
@@ -508,6 +581,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     Vector3 cameraRotate { 0.26f, 0.0f, 0.0f };
     int kWindowWidth = 1280;
     int kWindowHeight = 720;
+
+    // 01_02
+    Vector3 from0 = Nomalize(Vector3 { 1.0f, 0.7f, 0.5f });
+    Vector3 to0 = { -from0.x, -from0.y, -from0.z };
+    Vector3 from1 = Nomalize(Vector3 { -0.6f, 0.9f, 0.2f });
+    Vector3 to1 = Nomalize(Vector3 { 0.4f, 0.7f, -0.5f });
+    Matrix4x4 rotatematirix0 = DirectionToDirection(Nomalize(Vector3 { 1.0f, 0.0f, 0.0f }), Nomalize(Vector3 { -1.0f, 0.0f, 0.0f }));
+
+    Matrix4x4 rotatematrix1 = DirectionToDirection(from0, to0);
+
+    Matrix4x4 rotatematirix2 = DirectionToDirection(from1, to1);
 
     // ウィンドウの×ボタンが押されるまでループ
     while (Novice::ProcessMessage() == 0) {
@@ -535,20 +619,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         Matrix4x4 WorldViewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 #pragma endregion
 
-    /*    Vector3 a { 0.2f, 1.0f, 0.0f };
-        Vector3 b { 2.4f, 3.1f, 1.2f };
-        Vector3 c = a + b;
-        Vector3 d = a - b;
-        Vector3 e = a * 2.4f;
-
-        Vector3 rotate1 { 0.4f, 1.43f, -0.8f };
-
-        Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate1.x);
-        Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate1.y);
-        Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate1.z);
-
-        Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;*/
-
         ImGui::Begin("Control Panel");
 
         ImGui::End();
@@ -556,16 +626,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         /// ↑更新処理ここまで
         ///
 
-        Vector3 axis = Nomalize({ 1.0f, 1.0f, 1.0f }); // 回転軸
-        float angle = 0.44f; // ラジアン角
-
-        Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
-
-        MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
-
         ///
         /// ↓描画処理ここから
         ///
+
+        MatrixScreenPrintfRowMajor(0, 0, rotatematirix0, "rotatematirix0");
+        MatrixScreenPrintfRowMajor(0, 150, rotatematrix1, "rotatematirix1");
+        MatrixScreenPrintfColumnMajor (0, 300, rotatematirix2, "rotatematirix2");
 
         /// ↑描画処理ここまで
         ///
