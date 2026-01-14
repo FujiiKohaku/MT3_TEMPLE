@@ -518,10 +518,10 @@ Matrix4x4 DirectionToDirection(const Vector3& form, const Vector3& to)
     float cosTheta = Dot(fromN, toN);
 
     //  同じ方向（回転なし）
-    if (cosTheta > 0.999f) {
+    if (cosTheta > 0.999999f) {
         return MakeIdentity4x4();
     }
-    if (cosTheta < -0.999f) {
+    if (cosTheta < -0.999999f) {
 
         Vector3 axis;
 
@@ -654,12 +654,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     Matrix4x4 rotatematirix0 = DirectionToDirection(Nomalize(Vector3 { 1.0f, 0.0f, 0.0f }), Nomalize(Vector3 { -1.0f, 0.0f, 0.0f }));
 
     Matrix4x4 rotatematrix1 = DirectionToDirection(from0, to0);
-
     Matrix4x4 rotatematirix2 = DirectionToDirection(from1, to1);
 
     // 01_03
 
-    Quaternion q1 = { 2.0f, 3.0f, 4.0f, 1.0f };
+   /* Quaternion q1 = { 2.0f, 3.0f, 4.0f, 1.0f };
     Quaternion q2 = { 1.0f, 3.0f, 5.0f, 2.0f };
     Quaternion identity = IdentityQuaternion();
     Quaternion conj = Conjugate(q1);
@@ -667,7 +666,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     Quaternion normal = Normalize(q1);
     Quaternion mul1 = Multiply(q1, q2);
     Quaternion mul2 = Multiply(q2, q1);
-    float norm = Norm(q1);
+    float norm = Norm(q1);*/
 
     // ウィンドウの×ボタンが押されるまでループ
     while (Novice::ProcessMessage() == 0) {
@@ -706,11 +705,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         /// ↓描画処理ここから
         ///
 
-        /* MatrixScreenPrintfRowMajor(0, 0, rotatematirix0, "rotatematirix0");
+         MatrixScreenPrintfRowMajor(0, 0, rotatematirix0, "rotatematirix0");
          MatrixScreenPrintfRowMajor(0, 150, rotatematrix1, "rotatematirix1");
-         MatrixScreenPrintfColumnMajor(0, 300, rotatematirix2, "rotatematirix2");*/
+         MatrixScreenPrintfColumnMajor(0, 300, rotatematirix2, "rotatematirix2");
 
-       int y = 0;
+       /*int y = 0;
 
         Novice::ScreenPrintf(0, y, "x     y     z     w");
         y += 20;
@@ -739,7 +738,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             mul2.x, mul2.y, mul2.z, mul2.w);
         y += 20;
 
-        Novice::ScreenPrintf(0, y, "%5.2f                 : Norm", norm);
+        Novice::ScreenPrintf(0, y, "%5.2f                 : Norm", norm);*/
 
         /// ↑描画処理ここまで
         ///
