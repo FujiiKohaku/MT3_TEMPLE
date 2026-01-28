@@ -193,7 +193,6 @@ void VectorScreenPrintf(int x, int y, const Vector3& v, const char* label)
         v.x, v.y, v.z, label);
 }
 
-
 // 行列の積
 Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
@@ -705,6 +704,119 @@ Vector3 RotateVector(const Vector3& v, const Quaternion& q)
     };
 }
 
+// ----------------------
+// 基本関数
+// ----------------------
+static float DotQuaternion(const Quaternion& a, const Quaternion& b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+}
+
+static Quaternion NegateQuaternion(const Quaternion& q)
+{
+    Quaternion r;
+    r.x = -q.x;
+    r.y = -q.y;
+    r.z = -q.z;
+    r.w = -q.w;
+    return r;
+}
+
+static Quaternion AddQuaternion(const Quaternion& a, const Quaternion& b)
+{
+    Quaternion r;
+    r.x = a.x + b.x;
+    r.y = a.y + b.y;
+    r.z = a.z + b.z;
+    r.w = a.w + b.w;
+    return r;
+}
+
+static Quaternion ScaleQuaternion(const Quaternion& q, float s)
+{
+    Quaternion r;
+    r.x = q.x * s;
+    r.y = q.y * s;
+    r.z = q.z * s;
+    r.w = q.w * s;
+    return r;
+}
+
+static Quaternion NormalizeQuaternion(const Quaternion& q)
+{
+    float len2 = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+    if (len2 <= 0.0f) {
+        Quaternion id;
+        id.x = 0.0f;
+        id.y = 0.0f;
+        id.z = 0.0f;
+        id.w = 1.0f;
+        return id;
+    }
+    float invLen = 1.0f / std::sqrt(len2);
+
+    Quaternion r;
+    r.x = q.x * invLen;
+    r.y = q.y * invLen;
+    r.z = q.z * invLen;
+    r.w = q.w * invLen;
+    return r;
+}
+
+Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t)
+{
+    // t は 0～1 前提（必要なら clamp）
+    if (t < 0.0f) {
+        t = 0.0f;
+    }
+    if (t > 1.0f) {
+        t = 1.0f;
+    }
+
+    Quaternion a = q0;
+    Quaternion b = q1;
+
+    float dot = DotQuaternion(a, b);
+
+    // 反対向きなら符号を反転して「最短回転」にする
+    if (dot < 0.0f) {
+        b = NegateQuaternion(b);
+        dot = -dot;
+    }
+
+    // 数値誤差で acos の範囲外に出ないように clamp
+    if (dot > 1.0f) {
+        dot = 1.0f;
+    }
+    if (dot < -1.0f) {
+        dot = -1.0f;
+    }
+
+    // ほぼ同じ方向なら Slerp は不安定＆重いので Lerp で近似
+    const float kEpsilon = 1e-6f;
+    if (1.0f - dot < kEpsilon) {
+        // lerp: (1-t)*a + t*b
+        Quaternion r0 = ScaleQuaternion(a, 1.0f - t);
+        Quaternion r1 = ScaleQuaternion(b, t);
+        Quaternion r = AddQuaternion(r0, r1);
+
+        // 注意：毎回 Normalize したくないなら外で定期的に正規化でもOK
+        return NormalizeQuaternion(r);
+    }
+
+    float theta = std::acos(dot);
+    float sinTheta = std::sin(theta);
+
+    float scale0 = std::sin((1.0f - t) * theta) / sinTheta;
+    float scale1 = std::sin(t * theta) / sinTheta;
+
+    Quaternion p0 = ScaleQuaternion(a, scale0);
+    Quaternion p1 = ScaleQuaternion(b, scale1);
+    Quaternion result = AddQuaternion(p0, p1);
+
+    // ここも「毎回は重い」ので、必要なら外で定期的に Normalize する方針でOK
+    return result;
+}
 #pragma endregion
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -725,11 +837,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     int kWindowWidth = 1280;
     int kWindowHeight = 720;
 
-    Quaternion rotation = MakeRotateAxisAngleQuaternion(Nomalize(Vector3 { 1.0f, 0.4f, -0.2f }), 0.45f);
-    Vector3 pointY = { 2.1f, -0.9f, 1.3f };
-    Matrix4x4 rotateMatrix = MakeRotateMatrix(rotation);
-    Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
-    Vector3 rotateByMatrix = Transform(pointY, rotateMatrix);
+    Quaternion rotation0 = MakeRotateAxisAngleQuaternion({ 0.71f, 0.71f, 0.0f }, 0.3f);
+
+    Quaternion rotation1 = MakeRotateAxisAngleQuaternion({ 0.71f, 0.0f, 0.71f }, 3.141592f);
+
+    Quaternion interpolate0 = Slerp(rotation0, rotation1, 0.0f);
+    Quaternion interpolate1 = Slerp(rotation0, rotation1, 0.3f);
+    Quaternion interpolate2 = Slerp(rotation0, rotation1, 0.5f);
+    Quaternion interpolate3 = Slerp(rotation0, rotation1, 0.7f);
+    Quaternion interpolate4 = Slerp(rotation0, rotation1, 1.0f);
 
     // ウィンドウの×ボタンが押されるまでループ
     while (Novice::ProcessMessage() == 0) {
@@ -757,6 +873,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         Matrix4x4 WorldViewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 #pragma endregion
 
+        for (int i = 0; i < 4; i++) {
+            QuaternionScreenPrintf(0, 0*i, interpolate0, "interpolate0, Slerp(q0, q1, 0.0f)");
+            QuaternionScreenPrintf(0, 20, interpolate1, "interpolate1, Slerp(q0, q1, 0.3f)");
+            QuaternionScreenPrintf(0, 40, interpolate2, "interpolate2, Slerp(q0, q1, 0.5f)");
+            QuaternionScreenPrintf(0, 60, interpolate3, "interpolate3, Slerp(q0, q1, 0.7f)");
+            QuaternionScreenPrintf(0, 80, interpolate4, "interpolate4, Slerp(q0, q1, 1.0f)");
+        }
         ImGui::Begin("Control Panel");
 
         ImGui::End();
@@ -767,11 +890,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         ///
         /// ↓描画処理ここから
         ///
-        QuaternionScreenPrintf(0, 0, rotation, "rotation");
-        MatrixScreenPrintfColumnMajor(0, 30, rotateMatrix, "rotateMatrix");
-        VectorScreenPrintf(0, 130, rotateByQuaternion, "rotateByQuaternion");
-        VectorScreenPrintf(0, 170, rotateByMatrix, "rotateBymatrix");
-       
+
         /// ↑描画処理ここまで
         ///
 
